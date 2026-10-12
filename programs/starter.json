@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "id": "starter-upper-lower",
+  "name": "Upper / Lower – Base",
+  "description": "Scheda di esempio, 4 giorni a settimana (Upper A, Lower A, Upper B, Lower B). Sostituiscila con quella che ti prepara Claude.",
+  "days": [
+    {
+      "id": "upper-a",
+      "name": "Upper A",
+      "exercises": [
+        { "exerciseId": "Barbell_Bench_Press_-_Medium_Grip", "sets": 4, "reps": "6-8", "restSec": 150, "rpe": 8 },
+        { "exerciseId": "Bent_Over_Barbell_Row", "sets": 4, "reps": "8-10", "restSec": 120, "rpe": 8 },
+        { "exerciseId": "Standing_Military_Press", "sets": 3, "reps": "8-10", "restSec": 120 },
+        { "exerciseId": "Wide-Grip_Lat_Pulldown", "sets": 3, "reps": "10-12", "restSec": 90 },
+        { "exerciseId": "Barbell_Curl", "sets": 3, "reps": "10-12", "restSec": 60 },
+        { "exerciseId": "Triceps_Pushdown", "sets": 3, "reps": "10-12", "restSec": 60 }
+      ]
+    },
+    {
+      "id": "lower-a",
+      "name": "Lower A",
+      "exercises": [
+        { "exerciseId": "Barbell_Squat", "sets": 4, "reps": "6-8", "restSec": 180, "rpe": 8, "notes": "Scendi almeno al parallelo, schiena neutra." },
+        { "exerciseId": "Romanian_Deadlift", "sets": 3, "reps": "8-10", "restSec": 120 },
+        { "exerciseId": "Leg_Press", "sets": 3, "reps": "10-12", "restSec": 90 },
+        { "exerciseId": "Lying_Leg_Curls", "sets": 3, "reps": "10-12", "restSec": 60 },
+        { "exerciseId": "Standing_Calf_Raises", "sets": 4, "reps": "12-15", "restSec": 60 },
+        { "exerciseId": "Plank", "sets": 3, "reps": "45s", "restSec": 45 }
+      ]
+    },
+    {
+      "id": "upper-b",
+      "name": "Upper B",
+      "exercises": [
+        { "exerciseId": "Incline_Dumbbell_Press", "sets": 4, "reps": "8-10", "restSec": 120 },
+        { "exerciseId": "Pullups", "sets": 4, "reps": "6-10", "restSec": 120 },
+        { "exerciseId": "Seated_Cable_Rows", "sets": 3, "reps": "10-12", "restSec": 90 },
+        { "exerciseId": "Side_Lateral_Raise", "sets": 3, "reps": "12-15", "restSec": 60 },
+        { "exerciseId": "Face_Pull", "sets": 3, "reps": "12-15", "restSec": 60 },
+        { "exerciseId": "Hammer_Curls", "sets": 3, "reps": "10-12", "restSec": 60 }
+      ]
+    },
+    {
+      "id": "lower-b",
+      "name": "Lower B",
+      "exercises": [
+        { "exerciseId": "Barbell_Deadlift", "sets": 3, "reps": "5", "restSec": 180, "rpe": 8 },
+        { "exerciseId": "Dumbbell_Lunges", "sets": 3, "reps": "10-12", "restSec": 90, "notes": "Reps per gamba." },
+        { "exerciseId": "Leg_Extensions", "sets": 3, "reps": "12-15", "restSec": 60 },
+        { "exerciseId": "Lying_Leg_Curls", "sets": 3, "reps": "10-12", "restSec": 60 },
+        { "exerciseId": "Standing_Calf_Raises", "sets": 4, "reps": "12-15", "restSec": 60 },
+        { "exerciseId": "Hanging_Leg_Raise", "sets": 3, "reps": "10-15", "restSec": 60 }
+      ]
+    }
+  ]
+}

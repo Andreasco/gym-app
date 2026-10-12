@@ -1,0 +1,621 @@
+// Gym – personal workout PWA. Vanilla JS, no build step.
+// Data: free-exercise-db (public domain), programs imported as JSON, state in localStorage.
+
+const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
+const STORE_KEY = 'gymapp.v1';
+const SCHEMA_VERSION = 1;
+
+const IT = {
+  muscles: {
+    abdominals: 'Addominali', abductors: 'Abduttori', adductors: 'Adduttori', biceps: 'Bicipiti',
+    calves: 'Polpacci', chest: 'Petto', forearms: 'Avambracci', glutes: 'Glutei',
+    hamstrings: 'Femorali', lats: 'Dorsali', 'lower back': 'Lombari', 'middle back': 'Dorso medio',
+    neck: 'Collo', quadriceps: 'Quadricipiti', shoulders: 'Spalle', traps: 'Trapezio', triceps: 'Tricipiti',
+  },
+  equipment: {
+    bands: 'Elastici', barbell: 'Bilanciere', 'body only': 'Corpo libero', cable: 'Cavi',
+    dumbbell: 'Manubri', 'e-z curl bar': 'Bilanciere EZ', 'exercise ball': 'Fitball',
+    'foam roll': 'Foam roller', kettlebells: 'Kettlebell', machine: 'Macchina',
+    'medicine ball': 'Palla medica', other: 'Altro',
+  },
+  level: { beginner: 'Principiante', intermediate: 'Intermedio', expert: 'Avanzato' },
+};
+const tr = (group, key) => (key && IT[group][key]) || key || '—';
+
+// ---------- state ----------
+
+const defaultState = () => ({ programs: [], sessions: [], activeProgramId: null, activeSessionId: null });
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw ? { ...defaultState(), ...JSON.parse(raw) } : defaultState();
+  } catch {
+    return defaultState();
+  }
+}
+let state = loadState();
+function save() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+  catch (e) { toast('Errore nel salvataggio: ' + e.message); }
+}
+
+let exercises = [];
+let exById = new Map();
+
+async function loadExercises() {
+  const res = await fetch('data/exercises.json');
+  exercises = await res.json();
+  exById = new Map(exercises.map(e => [e.id, e]));
+}
+
+// ---------- helpers ----------
+
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const img = (ex, i = 0) => ex?.images?.[i] ? IMG_BASE + ex.images[i] : '';
+const fmtDate = iso => new Date(iso).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+const fmtTime = sec => `${Math.floor(sec / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`;
+const exName = id => exById.get(id)?.name || id;
+
+function toast(msg, ms = 2500) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), ms);
+}
+
+function download(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function shareOrDownload(filename, data) {
+  const file = new File([JSON.stringify(data, null, 2)], filename, { type: 'application/json' });
+  if (navigator.canShare?.({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: filename }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  download(filename, data);
+}
+
+const program = id => state.programs.find(p => p.id === id);
+const session = id => state.sessions.find(s => s.id === id);
+
+// Most recent completed sets for an exercise, excluding a given session.
+function lastPerformance(exerciseId, excludeSessionId) {
+  const done = state.sessions
+    .filter(s => s.finishedAt && s.id !== excludeSessionId)
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  for (const s of done) {
+    const entry = s.entries.find(e => e.exerciseId === exerciseId);
+    const sets = entry?.sets.filter(x => x.done);
+    if (sets?.length) return { date: s.startedAt, sets };
+  }
+  return null;
+}
+
+// ---------- program import / validation ----------
+
+function validateProgram(p) {
+  const errors = [];
+  const warnings = [];
+  if (!p || typeof p !== 'object') return { errors: ['Il JSON non è un oggetto.'], warnings };
+  if (!p.name) errors.push('Manca "name".');
+  if (!Array.isArray(p.days) || !p.days.length) errors.push('Manca "days" (lista di giorni).');
+  (p.days || []).forEach((d, i) => {
+    if (!d.name) errors.push(`Giorno ${i + 1}: manca "name".`);
+    if (!Array.isArray(d.exercises) || !d.exercises.length) errors.push(`Giorno ${i + 1}: nessun esercizio.`);
+    (d.exercises || []).forEach((x, j) => {
+      if (!x.exerciseId) errors.push(`Giorno ${i + 1}, esercizio ${j + 1}: manca "exerciseId".`);
+      else if (!exById.has(x.exerciseId)) warnings.push(`"${x.exerciseId}" non è nel database (verrà mostrato senza immagine).`);
+      if (!(x.sets > 0)) errors.push(`Giorno ${i + 1}, ${x.exerciseId || j + 1}: "sets" deve essere > 0.`);
+    });
+  });
+  return { errors, warnings };
+}
+
+function importProgram(p, { activate = true } = {}) {
+  const copy = structuredClone(p);
+  copy.id = copy.id && !program(copy.id) ? copy.id : uid();
+  copy.importedAt = new Date().toISOString();
+  copy.days.forEach((d, i) => { d.id = d.id || `d${i + 1}`; });
+  state.programs.push(copy);
+  if (activate) state.activeProgramId = copy.id;
+  save();
+  return copy;
+}
+
+// ---------- rest timer ----------
+
+const timer = { end: 0, handle: null };
+function startTimer(seconds) {
+  if (!seconds) return;
+  timer.end = Date.now() + seconds * 1000;
+  $('#timer').hidden = false;
+  clearInterval(timer.handle);
+  tickTimer();
+  timer.handle = setInterval(tickTimer, 250);
+}
+function tickTimer() {
+  const left = Math.round((timer.end - Date.now()) / 1000);
+  $('#timer-value').textContent = left >= 0 ? fmtTime(left) : '+' + fmtTime(-left);
+  const over = left < 0;
+  if (over && !$('#timer').classList.contains('over')) {
+    $('#timer').classList.add('over');
+    navigator.vibrate?.([200, 100, 200]);
+    beep();
+  }
+  if (!over) $('#timer').classList.remove('over');
+}
+function stopTimer() {
+  clearInterval(timer.handle);
+  $('#timer').hidden = true;
+  $('#timer').classList.remove('over');
+}
+let audioCtx;
+function beep() {
+  try {
+    audioCtx ??= new AudioContext();
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.frequency.value = 880;
+    g.gain.value = 0.15;
+    o.connect(g).connect(audioCtx.destination);
+    o.start();
+    o.stop(audioCtx.currentTime + 0.35);
+  } catch { /* audio not available */ }
+}
+$('#timer-stop').onclick = stopTimer;
+$('#timer-plus').onclick = () => { timer.end += 15000; tickTimer(); };
+$('#timer-minus').onclick = () => { timer.end -= 15000; tickTimer(); };
+
+// ---------- views ----------
+
+const view = $('#view');
+
+function setChrome(title, { back = false, tab = null } = {}) {
+  $('#title').textContent = title;
+  $('#back').hidden = !back;
+  document.querySelectorAll('.tabbar a').forEach(a => a.classList.toggle('active', a.dataset.tab === tab));
+}
+$('#back').onclick = () => history.length > 1 ? history.back() : (location.hash = '#/');
+
+function exerciseRow(x, { link = true } = {}) {
+  const ex = exById.get(x.exerciseId);
+  const inner = `
+    <div class="row">
+      ${ex ? `<img class="thumb" loading="lazy" src="${img(ex)}" alt="">` : '<div class="thumb"></div>'}
+      <div class="grow">
+        <h3 class="ellipsis">${esc(exName(x.exerciseId))}</h3>
+        <div class="target">
+          <span><b>${esc(x.sets)}</b> × <b>${esc(x.reps ?? '—')}</b></span>
+          ${x.restSec ? `<span>⏱ ${fmtTime(x.restSec)}</span>` : ''}
+          ${x.rpe ? `<span>RPE ${esc(x.rpe)}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  return link && ex ? `<a class="card" href="#/exercise/${encodeURIComponent(x.exerciseId)}">${inner}</a>` : `<div class="card">${inner}</div>`;
+}
+
+function renderHome() {
+  setChrome('Schede', { tab: 'home' });
+  const active = program(state.activeProgramId);
+  const running = session(state.activeSessionId);
+  const others = state.programs.filter(p => p.id !== state.activeProgramId);
+
+  view.innerHTML = `
+    ${running ? `
+      <a class="card" href="#/workout/${running.id}" style="border-color:var(--ok)">
+        <div class="row"><div class="grow"><h3>Allenamento in corso</h3>
+        <p class="muted">${esc(program(running.programId)?.name || '')} · ${esc(running.dayName)}</p></div>
+        <span class="badge" style="background:var(--ok)">Riprendi</span></div>
+      </a>` : ''}
+
+    ${active ? `
+      <h2>${esc(active.name)}</h2>
+      ${active.description ? `<p class="muted">${esc(active.description)}</p>` : ''}
+      ${active.days.map(d => `
+        <a class="card" href="#/program/${active.id}/${d.id}">
+          <div class="row"><div class="grow">
+            <h3>${esc(d.name)}</h3>
+            <p class="muted ellipsis">${d.exercises.map(x => esc(exName(x.exerciseId))).join(' · ')}</p>
+          </div><span class="muted">›</span></div>
+        </a>`).join('')}
+    ` : `
+      <div class="empty">
+        <p style="font-size:40px;margin:0">🏋️</p>
+        <p>Nessuna scheda attiva.</p>
+        <p class="small">Chiedi a Claude una scheda in JSON e importala.</p>
+      </div>`}
+
+    <div class="btn-row">
+      <a class="btn" href="#/import">Importa scheda</a>
+    </div>
+
+    ${others.length ? `<h2>Altre schede</h2>${others.map(p => `
+      <div class="card row">
+        <div class="grow"><h3 class="ellipsis">${esc(p.name)}</h3>
+        <p class="muted">${p.days.length} giorni · importata ${fmtDate(p.importedAt)}</p></div>
+        <button class="btn secondary" data-activate="${p.id}">Attiva</button>
+      </div>`).join('')}` : ''}
+  `;
+  view.querySelectorAll('[data-activate]').forEach(b => b.onclick = () => {
+    state.activeProgramId = b.dataset.activate;
+    save();
+    renderHome();
+  });
+}
+
+function renderDay(pid, did) {
+  const p = program(pid);
+  const d = p?.days.find(x => x.id === did);
+  if (!d) return notFound();
+  setChrome(d.name, { back: true, tab: 'home' });
+  view.innerHTML = `
+    ${d.notes ? `<div class="notes">${esc(d.notes)}</div>` : ''}
+    ${d.exercises.map(x => exerciseRow(x)).join('')}
+    <div class="btn-row"><button class="btn ok block" id="start">Inizia allenamento</button></div>
+  `;
+  $('#start').onclick = () => {
+    if (state.activeSessionId && session(state.activeSessionId) && !confirm('C\'è già un allenamento in corso. Lo scarto e ne inizio uno nuovo?')) return;
+    if (state.activeSessionId) state.sessions = state.sessions.filter(s => s.id !== state.activeSessionId);
+    const s = {
+      id: uid(), programId: p.id, programName: p.name, dayId: d.id, dayName: d.name,
+      startedAt: new Date().toISOString(), finishedAt: null,
+      entries: d.exercises.map(x => {
+        const last = lastPerformance(x.exerciseId);
+        return {
+          exerciseId: x.exerciseId,
+          sets: Array.from({ length: x.sets }, (_, i) => ({
+            weight: last?.sets[i]?.weight ?? last?.sets.at(-1)?.weight ?? x.weightKg ?? '',
+            reps: '', done: false,
+          })),
+        };
+      }),
+    };
+    state.sessions.push(s);
+    state.activeSessionId = s.id;
+    save();
+    location.hash = `#/workout/${s.id}`;
+  };
+}
+
+function renderWorkout(sid) {
+  const s = session(sid);
+  if (!s) return notFound();
+  const p = program(s.programId);
+  const d = p?.days.find(x => x.id === s.dayId);
+  const plan = id => d?.exercises.find(x => x.exerciseId === id) || {};
+  const readOnly = !!s.finishedAt;
+  setChrome(s.dayName, { back: true, tab: readOnly ? 'history' : 'home' });
+
+  view.innerHTML = `
+    <p class="muted">${esc(s.programName || p?.name || '')} · ${fmtDate(s.startedAt)}</p>
+    ${s.entries.map((e, ei) => {
+      const x = plan(e.exerciseId);
+      const ex = exById.get(e.exerciseId);
+      const last = lastPerformance(e.exerciseId, s.id);
+      return `
+      <div class="card">
+        <a class="row" href="#/exercise/${encodeURIComponent(e.exerciseId)}" style="color:inherit">
+          ${ex ? `<img class="thumb" loading="lazy" src="${img(ex)}" alt="">` : ''}
+          <div class="grow">
+            <h3>${esc(exName(e.exerciseId))}</h3>
+            <div class="target">
+              <span>Obiettivo <b>${esc(x.sets ?? e.sets.length)} × ${esc(x.reps ?? '—')}</b></span>
+              ${x.restSec ? `<span>⏱ ${fmtTime(x.restSec)}</span>` : ''}
+              ${x.rpe ? `<span>RPE ${esc(x.rpe)}</span>` : ''}
+            </div>
+          </div>
+        </a>
+        ${x.notes ? `<div class="notes">${esc(x.notes)}</div>` : ''}
+        <table class="sets">
+          <thead><tr><th>#</th><th>Prec.</th><th>kg</th><th>Reps</th><th></th></tr></thead>
+          <tbody>
+            ${e.sets.map((st, si) => `
+              <tr class="${st.done ? 'done' : ''}">
+                <td>${si + 1}</td>
+                <td class="prev">${last?.sets[si] ? `${esc(last.sets[si].weight)}×${esc(last.sets[si].reps)}` : '—'}</td>
+                <td><input inputmode="decimal" data-e="${ei}" data-s="${si}" data-f="weight" value="${esc(st.weight)}" ${readOnly ? 'disabled' : ''}></td>
+                <td><input inputmode="numeric" data-e="${ei}" data-s="${si}" data-f="reps" value="${esc(st.reps)}" placeholder="${esc(String(x.reps ?? '').split('-').pop())}" ${readOnly ? 'disabled' : ''}></td>
+                <td><button class="set-check ${st.done ? 'done' : ''}" data-e="${ei}" data-s="${si}" ${readOnly ? 'disabled' : ''}>✓</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+        ${readOnly ? '' : `<div class="btn-row" style="margin:6px 0 0"><button class="btn secondary" data-addset="${ei}">+ Serie</button></div>`}
+      </div>`;
+    }).join('')}
+    ${readOnly ? `
+      <div class="btn-row"><button class="btn danger block" id="delete">Elimina allenamento</button></div>
+    ` : `
+      <div class="btn-row">
+        <button class="btn danger" id="discard">Scarta</button>
+        <button class="btn ok" id="finish">Termina</button>
+      </div>`}
+  `;
+
+  view.querySelectorAll('input[data-f]').forEach(inp => inp.oninput = () => {
+    const v = inp.value.replace(',', '.');
+    s.entries[inp.dataset.e].sets[inp.dataset.s][inp.dataset.f] = v === '' ? '' : Number(v);
+    save();
+  });
+  view.querySelectorAll('.set-check').forEach(btn => btn.onclick = () => {
+    const e = s.entries[btn.dataset.e];
+    const st = e.sets[btn.dataset.s];
+    if (!st.done && st.reps === '') {
+      const target = String(plan(e.exerciseId).reps ?? '').split('-').pop();
+      st.reps = Number(target) || '';
+    }
+    st.done = !st.done;
+    const next = e.sets[Number(btn.dataset.s) + 1];
+    if (st.done && next && next.weight === '') next.weight = st.weight;
+    save();
+    if (st.done) startTimer(plan(e.exerciseId).restSec);
+    renderWorkout(sid);
+  });
+  view.querySelectorAll('[data-addset]').forEach(btn => btn.onclick = () => {
+    const sets = s.entries[btn.dataset.addset].sets;
+    sets.push({ weight: sets.at(-1)?.weight ?? '', reps: '', done: false });
+    save();
+    renderWorkout(sid);
+  });
+  $('#finish')?.addEventListener('click', () => {
+    const done = s.entries.reduce((n, e) => n + e.sets.filter(x => x.done).length, 0);
+    if (!done && !confirm('Nessuna serie completata. Terminare comunque?')) return;
+    s.finishedAt = new Date().toISOString();
+    s.entries.forEach(e => { e.sets = e.sets.filter(x => x.done); });
+    state.activeSessionId = null;
+    save();
+    stopTimer();
+    toast(`Allenamento salvato: ${done} serie`);
+    location.hash = '#/history';
+  });
+  $('#discard')?.addEventListener('click', () => {
+    if (!confirm('Scartare questo allenamento?')) return;
+    state.sessions = state.sessions.filter(x => x.id !== s.id);
+    state.activeSessionId = null;
+    save();
+    stopTimer();
+    location.hash = '#/';
+  });
+  $('#delete')?.addEventListener('click', () => {
+    if (!confirm('Eliminare definitivamente questo allenamento dallo storico?')) return;
+    state.sessions = state.sessions.filter(x => x.id !== s.id);
+    save();
+    location.hash = '#/history';
+  });
+}
+
+function renderHistory() {
+  setChrome('Storico', { tab: 'history' });
+  const done = state.sessions.filter(s => s.finishedAt).sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  if (!done.length) {
+    view.innerHTML = '<div class="empty"><p style="font-size:40px;margin:0">📈</p><p>Nessun allenamento completato.</p></div>';
+    return;
+  }
+  view.innerHTML = done.map(s => {
+    const sets = s.entries.reduce((n, e) => n + e.sets.length, 0);
+    const volume = s.entries.reduce((n, e) => n + e.sets.reduce((m, x) => m + (Number(x.weight) || 0) * (Number(x.reps) || 0), 0), 0);
+    const mins = Math.round((new Date(s.finishedAt) - new Date(s.startedAt)) / 60000);
+    return `
+      <a class="card" href="#/workout/${s.id}">
+        <div class="row"><div class="grow">
+          <h3>${esc(s.dayName)}</h3>
+          <p class="muted">${fmtDate(s.startedAt)} · ${mins} min · ${sets} serie · ${Math.round(volume)} kg</p>
+        </div><span class="muted">›</span></div>
+      </a>`;
+  }).join('');
+}
+
+const libFilter = { q: '', muscle: '', equipment: '' };
+function renderLibrary() {
+  setChrome('Esercizi', { tab: 'library' });
+  const muscles = Object.keys(IT.muscles);
+  const equip = Object.keys(IT.equipment);
+  view.innerHTML = `
+    <div class="filters">
+      <input id="q" type="search" placeholder="Cerca (es. bench, curl, squat)" value="${esc(libFilter.q)}">
+      <select id="muscle"><option value="">Tutti i muscoli</option>${muscles.map(m => `<option value="${m}" ${libFilter.muscle === m ? 'selected' : ''}>${tr('muscles', m)}</option>`).join('')}</select>
+      <select id="equipment"><option value="">Tutta l'attrezzatura</option>${equip.map(m => `<option value="${m}" ${libFilter.equipment === m ? 'selected' : ''}>${tr('equipment', m)}</option>`).join('')}</select>
+    </div>
+    <p class="muted" id="count"></p>
+    <div id="results"></div>
+  `;
+  const draw = () => {
+    const q = libFilter.q.trim().toLowerCase();
+    const list = exercises.filter(e =>
+      (!q || e.name.toLowerCase().includes(q)) &&
+      (!libFilter.muscle || e.primaryMuscles.includes(libFilter.muscle)) &&
+      (!libFilter.equipment || e.equipment === libFilter.equipment));
+    $('#count').textContent = `${list.length} esercizi`;
+    $('#results').innerHTML = list.slice(0, 150).map(e => `
+      <a class="card" href="#/exercise/${encodeURIComponent(e.id)}">
+        <div class="row">
+          <img class="thumb" loading="lazy" src="${img(e)}" alt="">
+          <div class="grow"><h3 class="ellipsis">${esc(e.name)}</h3>
+          <p class="muted ellipsis">${e.primaryMuscles.map(m => tr('muscles', m)).join(', ')} · ${tr('equipment', e.equipment)}</p></div>
+        </div>
+      </a>`).join('') + (list.length > 150 ? '<p class="muted">Restringi la ricerca per vedere altri risultati.</p>' : '');
+  };
+  $('#q').oninput = e => { libFilter.q = e.target.value; draw(); };
+  $('#muscle').onchange = e => { libFilter.muscle = e.target.value; draw(); };
+  $('#equipment').onchange = e => { libFilter.equipment = e.target.value; draw(); };
+  draw();
+}
+
+function renderExercise(id) {
+  const e = exById.get(id);
+  if (!e) return notFound();
+  setChrome(e.name, { back: true });
+  const hist = state.sessions
+    .filter(s => s.finishedAt)
+    .flatMap(s => s.entries.filter(x => x.exerciseId === id && x.sets.length).map(x => ({ date: s.startedAt, sets: x.sets })))
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 10);
+  view.innerHTML = `
+    <div class="gallery">${e.images.map((_, i) => `<img class="hero" loading="lazy" src="${img(e, i)}" alt="">`).join('')}</div>
+    <div class="chips">
+      ${e.primaryMuscles.map(m => `<span class="chip" style="border-color:var(--accent)">${tr('muscles', m)}</span>`).join('')}
+      ${e.secondaryMuscles.map(m => `<span class="chip">${tr('muscles', m)}</span>`).join('')}
+    </div>
+    <p class="muted" style="margin-top:10px">${tr('equipment', e.equipment)} · ${tr('level', e.level)}${e.mechanic ? ' · ' + esc(e.mechanic) : ''}</p>
+    ${hist.length ? `<h2>Ultime volte</h2>${hist.map(h => `
+      <p><span class="muted">${fmtDate(h.date)}</span> · ${h.sets.map(x => `${esc(x.weight)}×${esc(x.reps)}`).join(', ')}</p>`).join('')}` : ''}
+    <h2>Esecuzione</h2>
+    <ol class="list-plain">${e.instructions.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
+    <p class="muted small">ID: <code>${esc(e.id)}</code></p>
+  `;
+}
+
+function renderImport() {
+  setChrome('Importa scheda', { back: true, tab: 'home' });
+  view.innerHTML = `
+    <p class="muted">Incolla qui il JSON della scheda generata da Claude, oppure scegli un file.</p>
+    <textarea id="json" placeholder='{ "name": "...", "days": [ ... ] }' autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+    <div class="btn-row">
+      <button class="btn secondary" id="paste">Incolla</button>
+      <label class="btn secondary">File…<input id="file" type="file" accept="application/json,.json" hidden></label>
+    </div>
+    <div id="result"></div>
+    <div class="btn-row"><button class="btn block" id="go">Importa e attiva</button></div>
+  `;
+  $('#paste').onclick = async () => {
+    try { $('#json').value = await navigator.clipboard.readText(); }
+    catch { toast('Tieni premuto nel riquadro e scegli Incolla'); }
+  };
+  $('#file').onchange = async ev => {
+    const f = ev.target.files[0];
+    if (f) $('#json').value = await f.text();
+  };
+  $('#go').onclick = () => {
+    let p;
+    try { p = JSON.parse($('#json').value); }
+    catch (e) { $('#result').innerHTML = `<div class="notes" style="border-color:var(--danger)">JSON non valido: ${esc(e.message)}</div>`; return; }
+    const { errors, warnings } = validateProgram(p);
+    if (errors.length) {
+      $('#result').innerHTML = `<div class="notes" style="border-color:var(--danger)"><b>Errori</b><ul class="list-plain">${errors.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+      return;
+    }
+    if (warnings.length && !confirm(`Attenzione:\n${warnings.join('\n')}\n\nImportare comunque?`)) return;
+    importProgram(p);
+    toast('Scheda importata');
+    location.hash = '#/';
+  };
+}
+
+function renderSettings() {
+  setChrome('Dati', { tab: 'settings' });
+  const done = state.sessions.filter(s => s.finishedAt).length;
+  view.innerHTML = `
+    <h2>Backup</h2>
+    <p class="muted">I dati sono salvati solo su questo telefono. Esporta un backup ogni tanto e mandalo a Claude per aggiornare la scheda in base ai progressi.</p>
+    <p>${state.programs.length} schede · ${done} allenamenti</p>
+    <div class="btn-row">
+      <button class="btn" id="export">Esporta backup</button>
+      <label class="btn secondary">Ripristina…<input id="restore" type="file" accept="application/json,.json" hidden></label>
+    </div>
+
+    <h2>Schede</h2>
+    ${state.programs.map(p => `
+      <div class="card row">
+        <div class="grow"><h3 class="ellipsis">${esc(p.name)}</h3>
+        <p class="muted">${p.id === state.activeProgramId ? 'Attiva · ' : ''}${p.days.length} giorni</p></div>
+        <button class="btn secondary" data-export="${p.id}">JSON</button>
+        <button class="btn danger" data-del="${p.id}">✕</button>
+      </div>`).join('') || '<p class="muted">Nessuna scheda.</p>'}
+
+    <h2>Info</h2>
+    <p class="muted small">Esercizi: <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">free-exercise-db</a> (public domain), ${exercises.length} esercizi.</p>
+    <details><summary>Cancella tutti i dati</summary>
+      <button class="btn danger block" id="wipe">Cancella tutto</button>
+    </details>
+  `;
+  $('#export').onclick = () => shareOrDownload(`gym-backup-${new Date().toISOString().slice(0, 10)}.json`,
+    { app: 'gym-app', schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), ...state });
+  $('#restore').onchange = async ev => {
+    const f = ev.target.files[0];
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      if (!Array.isArray(data.programs) || !Array.isArray(data.sessions)) throw new Error('formato non riconosciuto');
+      if (!confirm('Sostituire tutti i dati attuali con il backup?')) return;
+      const { programs, sessions, activeProgramId = null, activeSessionId = null } = data;
+      state = { programs, sessions, activeProgramId, activeSessionId };
+      save();
+      toast('Backup ripristinato');
+      renderSettings();
+    } catch (e) { toast('Backup non valido: ' + e.message); }
+  };
+  view.querySelectorAll('[data-export]').forEach(b => b.onclick = () => {
+    const p = program(b.dataset.export);
+    shareOrDownload(`${p.name.replace(/\W+/g, '-').toLowerCase()}.json`, p);
+  });
+  view.querySelectorAll('[data-del]').forEach(b => b.onclick = () => {
+    const p = program(b.dataset.del);
+    if (!confirm(`Eliminare la scheda "${p.name}"? Lo storico degli allenamenti resta.`)) return;
+    state.programs = state.programs.filter(x => x.id !== p.id);
+    if (state.activeProgramId === p.id) state.activeProgramId = state.programs[0]?.id ?? null;
+    save();
+    renderSettings();
+  });
+  $('#wipe').onclick = () => {
+    if (!confirm('Cancellare TUTTI i dati (schede e storico)?')) return;
+    state = defaultState();
+    save();
+    renderSettings();
+  };
+}
+
+function notFound() {
+  setChrome('Non trovato', { back: true });
+  view.innerHTML = '<div class="empty"><p>Elemento non trovato.</p><a href="#/">Torna alle schede</a></div>';
+}
+
+// ---------- router ----------
+
+function route() {
+  const parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
+  window.scrollTo(0, 0);
+  switch (parts[0]) {
+    case '': return renderHome();
+    case 'program': return renderDay(parts[1], parts[2]);
+    case 'workout': return renderWorkout(parts[1]);
+    case 'history': return renderHistory();
+    case 'library': return renderLibrary();
+    case 'exercise': return renderExercise(parts[1]);
+    case 'import': return renderImport();
+    case 'settings': return renderSettings();
+    default: return notFound();
+  }
+}
+
+// ---------- boot ----------
+
+async function boot() {
+  view.innerHTML = '<div class="empty">Caricamento…</div>';
+  await loadExercises();
+
+  // First run: load the bundled starter program so the app is usable immediately.
+  if (!state.programs.length && !localStorage.getItem(STORE_KEY + '.seeded')) {
+    try {
+      const p = await (await fetch('programs/starter.json')).json();
+      importProgram(p);
+    } catch { /* no starter program */ }
+    localStorage.setItem(STORE_KEY + '.seeded', '1');
+  }
+
+  window.addEventListener('hashchange', route);
+  route();
+  navigator.storage?.persist?.();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+boot();
