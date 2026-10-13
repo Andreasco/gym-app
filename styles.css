@@ -177,3 +177,4 @@ textarea.ex-note { margin-top: 10px; resize: vertical; }
 .mini button.danger { color: var(--danger); }
 .mini button:disabled { opacity: .35; }
 .day-edit .row { align-items: flex-end; }
+.clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
