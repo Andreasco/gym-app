@@ -1,10 +1,12 @@
 // Gym – personal workout PWA. Vanilla JS, no build step.
 // Data: free-exercise-db (public domain), programs imported as JSON, state in localStorage.
 
+import { loadConfig, saveConfig, sync, testConnection, queueDelete } from './sync.js';
+
 const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 const STORE_KEY = 'gymapp.v1';
 const SCHEMA_VERSION = 1;
-const APP_VERSION = '2026-10-13.3';
+const APP_VERSION = '2026-10-13.4';
 
 const IT = {
   muscles: {
@@ -25,7 +27,7 @@ const tr = (group, key) => (key && IT[group][key]) || key || '—';
 
 // ---------- state ----------
 
-const defaultState = () => ({ programs: [], sessions: [], activeProgramId: null, activeSessionId: null });
+const defaultState = () => ({ programs: [], sessions: [], activeProgramId: null, activeSessionId: null, pendingDeletes: [] });
 
 function loadState() {
   try {
@@ -39,6 +41,32 @@ let state = loadState();
 function save() {
   try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
   catch (e) { toast('Errore nel salvataggio: ' + e.message); }
+}
+
+// ---------- GitHub sync ----------
+
+const syncState = { running: false, again: false, lastError: null, lastSync: null };
+async function runSync({ quiet = true } = {}) {
+  const cfg = loadConfig();
+  if (!cfg || !navigator.onLine) return;
+  if (syncState.running) { syncState.again = true; return; }
+  syncState.running = true;
+  try {
+    const r = await sync(state, cfg);
+    save();
+    syncState.lastError = null;
+    syncState.lastSync = new Date();
+    if (!quiet) toast(`Sincronizzato: ${r.pulled} ricevuti, ${r.pushed} inviati, ${r.deleted} eliminati`);
+    // Refresh the view with pulled data, but never under the user's fingers during a workout.
+    if (r.pulled && !location.hash.startsWith('#/workout') && !location.hash.startsWith('#/import')) route();
+  } catch (e) {
+    syncState.lastError = e.status === 401 ? 'Token non valido o scaduto' : e.message;
+    if (!quiet || e.status === 401) toast('Sync non riuscito: ' + syncState.lastError, 4000);
+  } finally {
+    syncState.running = false;
+    if (location.hash === '#/settings') renderSyncStatus();
+    if (syncState.again) { syncState.again = false; runSync(); }
+  }
 }
 
 let exercises = [];
@@ -453,6 +481,7 @@ function renderWorkout(sid) {
     stopTimer();
     toast(`Allenamento salvato: ${done} serie`);
     location.hash = '#/history';
+    runSync();
   });
   $('#discard')?.addEventListener('click', () => {
     if (!confirm('Scartare questo allenamento?')) return;
@@ -465,7 +494,9 @@ function renderWorkout(sid) {
   $('#delete')?.addEventListener('click', () => {
     if (!confirm('Eliminare definitivamente questo allenamento dallo storico?')) return;
     state.sessions = state.sessions.filter(x => x.id !== s.id);
+    queueDelete(state, s);
     save();
+    runSync();
     location.hash = '#/history';
   });
 }
@@ -583,6 +614,7 @@ function renderImport() {
     if (warnings.length && !confirm(`Attenzione:\n${warnings.join('\n')}\n\nImportare comunque?`)) return;
     importProgram(p);
     toast('Scheda importata');
+    runSync();
     location.hash = '#/';
   };
 }
@@ -590,9 +622,27 @@ function renderImport() {
 function renderSettings() {
   setChrome('Dati', { tab: 'settings' });
   const done = state.sessions.filter(s => s.finishedAt).length;
+  const cfg = loadConfig();
   view.innerHTML = `
+    <h2>Sincronizzazione GitHub</h2>
+    ${cfg ? `
+      <p class="muted">Repository privata <b style="color:var(--text)">${esc(cfg.owner)}/${esc(cfg.repo)}</b>. Schede e allenamenti si sincronizzano da soli.</p>
+      <p id="sync-status" class="muted small"></p>
+      <div class="btn-row">
+        <button class="btn" id="sync-now">Sincronizza ora</button>
+        <button class="btn danger" id="sync-off">Disconnetti</button>
+      </div>
+    ` : `
+      <p class="muted">Collega una repository GitHub <b>privata</b> per avere backup automatico e schede pubblicate da Claude. Serve un token fine-grained con accesso solo a quella repository (Contents: Read and write).</p>
+      <div class="filters">
+        <input id="gh-repo" placeholder="owner/repo" value="Andreasco/gym-data" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <input id="gh-token" type="password" placeholder="Token (github_pat_…)" autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <div class="btn-row"><button class="btn" id="sync-connect">Collega</button></div>
+    `}
+
     <h2>Backup</h2>
-    <p class="muted">I dati sono salvati solo su questo telefono. Esporta un backup ogni tanto e mandalo a Claude per aggiornare la scheda in base ai progressi.</p>
+    <p class="muted">${cfg ? 'Backup manuale opzionale: i dati sono già su GitHub.' : 'I dati sono salvati solo su questo telefono. Esporta un backup ogni tanto.'}</p>
     <p>${state.programs.length} schede · ${done} allenamenti</p>
     <div class="btn-row">
       <button class="btn" id="export">Esporta backup</button>
@@ -615,6 +665,34 @@ function renderSettings() {
       <button class="btn danger block" id="wipe">Cancella tutto</button>
     </details>
   `;
+  if (cfg) {
+    renderSyncStatus();
+    $('#sync-now').onclick = () => { $('#sync-status').textContent = 'Sincronizzazione…'; runSync({ quiet: false }); };
+    $('#sync-off').onclick = () => {
+      if (!confirm('Scollegare GitHub da questo telefono? I dati restano sia qui sia su GitHub.')) return;
+      saveConfig(null);
+      renderSettings();
+    };
+  } else {
+    $('#sync-connect').onclick = async () => {
+      const [owner, repo] = $('#gh-repo').value.trim().split('/');
+      const token = $('#gh-token').value.trim();
+      if (!owner || !repo || !token) return toast('Inserisci repository e token');
+      const btn = $('#sync-connect');
+      btn.disabled = true;
+      btn.textContent = 'Verifica…';
+      try {
+        const branch = await testConnection({ owner, repo, token });
+        saveConfig({ owner, repo, token, branch });
+        await runSync({ quiet: false });
+        renderSettings();
+      } catch (e) {
+        toast(e.status === 401 ? 'Token non valido' : e.status === 404 ? 'Repository non trovata o token senza accesso' : e.message, 4000);
+        btn.disabled = false;
+        btn.textContent = 'Collega';
+      }
+    };
+  }
   $('#export').onclick = () => shareOrDownload(`gym-backup-${new Date().toISOString().slice(0, 10)}.json`,
     { app: 'gym-app', schemaVersion: SCHEMA_VERSION, exportedAt: new Date().toISOString(), ...state });
   $('#restore').onchange = async ev => {
@@ -624,8 +702,8 @@ function renderSettings() {
       const data = JSON.parse(await f.text());
       if (!Array.isArray(data.programs) || !Array.isArray(data.sessions)) throw new Error('formato non riconosciuto');
       if (!confirm('Sostituire tutti i dati attuali con il backup?')) return;
-      const { programs, sessions, activeProgramId = null, activeSessionId = null } = data;
-      state = { programs, sessions, activeProgramId, activeSessionId };
+      const { programs, sessions, activeProgramId = null, activeSessionId = null, pendingDeletes = [] } = data;
+      state = { programs, sessions, activeProgramId, activeSessionId, pendingDeletes };
       save();
       toast('Backup ripristinato');
       renderSettings();
@@ -639,16 +717,33 @@ function renderSettings() {
     const p = program(b.dataset.del);
     if (!confirm(`Eliminare la scheda "${p.name}"? Lo storico degli allenamenti resta.`)) return;
     state.programs = state.programs.filter(x => x.id !== p.id);
+    queueDelete(state, p);
     if (state.activeProgramId === p.id) state.activeProgramId = state.programs[0]?.id ?? null;
     save();
     renderSettings();
+    runSync();
   });
   $('#wipe').onclick = () => {
-    if (!confirm('Cancellare TUTTI i dati (schede e storico)?')) return;
+    if (!confirm(loadConfig()
+      ? 'Cancellare i dati da questo telefono? Quelli su GitHub restano e verranno riscaricati al prossimo sync.'
+      : 'Cancellare TUTTI i dati (schede e storico)?')) return;
     state = defaultState();
     save();
     renderSettings();
   };
+}
+
+function renderSyncStatus() {
+  const el = $('#sync-status');
+  if (!el) return;
+  const pending = state.programs.filter(p => !p._path).length + state.sessions.filter(s => s.finishedAt && !s._path).length + (state.pendingDeletes?.length || 0);
+  el.innerHTML = [
+    syncState.running ? 'Sincronizzazione in corso…'
+      : syncState.lastError ? `<span style="color:var(--danger)">Errore: ${esc(syncState.lastError)}</span>`
+      : syncState.lastSync ? `Ultimo sync: ${syncState.lastSync.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}`
+      : 'Non ancora sincronizzato in questa sessione',
+    pending ? `${pending} modifiche da inviare` : '',
+  ].filter(Boolean).join(' · ');
 }
 
 function notFound() {
@@ -693,6 +788,9 @@ async function boot() {
   route();
   navigator.storage?.persist?.();
   registerServiceWorker();
+  runSync();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') runSync(); });
+  window.addEventListener('online', () => runSync());
 }
 
 // iOS keeps a home-screen PWA suspended in memory, so "reopening" it does not reload the page.
