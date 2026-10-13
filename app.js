@@ -583,7 +583,7 @@ function notFound() {
 
 function route() {
   const parts = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
-  window.scrollTo(0, 0);
+  view.scrollTop = 0;
   switch (parts[0]) {
     case '': return renderHome();
     case 'program': return renderDay(parts[1], parts[2]);
