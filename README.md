@@ -25,6 +25,7 @@ Static web app for gym workout plans. No backend, no build step: it runs on GitH
       "exercises": [
         {
           "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
+          "name": "optional custom display name, e.g. Panca piana",
           "sets": 4,
           "reps": "6-8",
           "restSec": 150,
@@ -46,6 +47,7 @@ Static web app for gym workout plans. No backend, no build step: it runs on GitH
 | `sets` | yes | Integer > 0 |
 | `reps` | no | String: `"8"`, `"6-8"`, `"45s"` |
 | `restSec` | no | Starts the rest timer when a set is ticked |
+| `name` (exercise) | no | Custom display name; defaults to the database name |
 | `rpe`, `weightKg`, `notes` | no | `weightKg` is the starting weight when there is no history |
 
 ## GitHub sync
@@ -68,7 +70,8 @@ delete the remote file.
 ## Backup format
 
 *Esporta backup* produces `{ app, schemaVersion, exportedAt, programs[], sessions[], activeProgramId, activeSessionId }`.
-Each session: `{ id, programId, dayId, dayName, startedAt, finishedAt, entries: [{ exerciseId, sets: [{ weight, reps, done }] }] }`.
+Each session: `{ id, programId, dayId, dayName, startedAt, finishedAt, entries: [{ exerciseId, planId, name, note, sets: [{ weight, reps, done }] }] }`.
+`planId` is the planned exercise when it was swapped during the workout (`null` for an exercise added on the fly); `note` is the user's note for that exercise in that workout.
 Send this file to Claude to get the next plan adjusted to actual progress.
 
 ## Local run

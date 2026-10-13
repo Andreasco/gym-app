@@ -28,7 +28,7 @@ const fromB64 = b64 => dec.decode(Uint8Array.from(atob(b64.replace(/\s/g, '')), 
 const slug = s => String(s).toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80) || 'item';
 const programPath = p => `programs/${slug(p.id)}.json`;
 const sessionPath = s => `sessions/${s.startedAt.slice(0, 4)}/${s.startedAt.slice(0, 10)}-${slug(s.id)}.json`;
-const strip = ({ _path, _sha, ...rest }) => rest;
+const strip = ({ _path, _sha, _dirty, ...rest }) => rest;
 const serialize = item => JSON.stringify(strip(item), null, 2) + '\n';
 
 export class GitHubError extends Error {
@@ -84,6 +84,7 @@ export async function sync(state, cfg) {
     });
     item._path = path;
     item._sha = res.content.sha;
+    delete item._dirty;
     remote.set(path, item._sha);
     summary.pushed++;
   };
@@ -102,7 +103,11 @@ export async function sync(state, cfg) {
   const reconcile = async ({ list, prefix, pathOf, label, normalize }) => {
     const known = new Set();
     for (const item of [...list]) {
-      if (item._path) {
+      if (item._path && item._dirty) {
+        // Edited on this device: local version wins, even if the remote file changed or was removed.
+        known.add(item._path);
+        await put(item._path, item, `Update ${label(item)}`);
+      } else if (item._path) {
         known.add(item._path);
         if (!remote.has(item._path)) {
           list.splice(list.indexOf(item), 1); // removed remotely

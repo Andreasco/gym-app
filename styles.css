@@ -146,3 +146,34 @@ tr.done input { color: var(--ok); }
   padding: 10px 16px; border-radius: 12px; font-size: 14px; max-width: calc(100% - 32px);
 }
 details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
+
+/* Exercise picker (full-screen overlay) */
+.picker {
+  position: fixed; inset: 0; z-index: 30; background: var(--bg);
+  display: flex; flex-direction: column; padding-top: var(--safe-top);
+}
+.picker-head { display: flex; align-items: center; gap: 8px; height: 52px; padding: 0 12px; border-bottom: 1px solid var(--border); flex: none; }
+.picker-head h1 { font-size: 17px; margin: 0; }
+.picker-filters { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 10px 16px; flex: none; }
+.picker-list { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px calc(24px + var(--safe-bottom)); }
+button.card.pick { width: 100%; text-align: left; color: inherit; font: inherit; }
+
+/* Program editor */
+.field { display: block; margin: 8px 0; }
+.field > span { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+textarea.short, textarea.ex-note { min-height: 0; font-family: inherit; font-size: 15px; }
+textarea.ex-note { margin-top: 10px; resize: vertical; }
+.grid3 { display: grid; grid-template-columns: 1.4fr 1.4fr 1fr; gap: 8px; }
+.grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0; }
+.grid5 .field { margin: 0; }
+.grid5 input { padding: 8px 4px; text-align: center; }
+.ex-edit { border-top: 1px solid var(--border); padding: 12px 0; }
+.thumb.small { width: 44px; height: 44px; }
+.mini { display: flex; gap: 6px; flex-wrap: wrap; }
+.mini button {
+  min-width: 40px; height: 36px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font: inherit; font-size: 14px; padding: 0 10px;
+}
+.mini button.danger { color: var(--danger); }
+.mini button:disabled { opacity: .35; }
+.day-edit .row { align-items: flex-end; }
