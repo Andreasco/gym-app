@@ -1,4 +1,4 @@
-import { $, esc, toast } from '../dom.js';
+import { $, esc, toast, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
 import { pickExercise } from '../components.js';
 import { IT } from '../../core/i18n.js';
@@ -29,7 +29,7 @@ function exerciseEditor(x, di, xi, count) {
       <div class="row">
         ${ex ? `<img class="thumb small" src="${imageUrl(ex)}" alt="">` : ''}
         <div class="grow">
-          <input data-bind="${base}.name" value="${esc(x.name || '')}" placeholder="${esc(exerciseName(x.exerciseId))}">
+          <input data-bind="${base}.name" aria-label="Nome esercizio" value="${esc(x.name || '')}" placeholder="${esc(exerciseName(x.exerciseId))}">
           <p class="muted small ellipsis">${esc(exerciseName(x.exerciseId))}</p>
         </div>
       </div>
@@ -40,12 +40,12 @@ function exerciseEditor(x, di, xi, count) {
         ${numField(`${base}.rpe`, x.rpe, 'RPE', 'decimal')}
         ${numField(`${base}.weightKg`, x.weightKg, 'Kg', 'decimal')}
       </div>
-      <input data-bind="${base}.notes" value="${esc(x.notes || '')}" placeholder="Note tecniche">
-      <div class="mini" style="margin-top:6px">
-        <button data-act="ex-up" data-d="${di}" data-x="${xi}" ${xi ? '' : 'disabled'}>↑</button>
-        <button data-act="ex-down" data-d="${di}" data-x="${xi}" ${xi < count - 1 ? '' : 'disabled'}>↓</button>
-        <button data-act="ex-swap" data-d="${di}" data-x="${xi}">⇄ Cambia</button>
-        <button data-act="ex-del" data-d="${di}" data-x="${xi}" class="danger">✕</button>
+      <input data-bind="${base}.notes" aria-label="Note tecniche" value="${esc(x.notes || '')}" placeholder="Note tecniche">
+      <div class="mini" style="margin-top:8px">
+        <button data-act="ex-up" data-d="${di}" data-x="${xi}" aria-label="Sposta su" ${xi ? '' : 'disabled'}>${icon('arrow-up')}</button>
+        <button data-act="ex-down" data-d="${di}" data-x="${xi}" aria-label="Sposta giù" ${xi < count - 1 ? '' : 'disabled'}>${icon('arrow-down')}</button>
+        <button data-act="ex-swap" data-d="${di}" data-x="${xi}">${icon('swap')}Cambia</button>
+        <button data-act="ex-del" data-d="${di}" data-x="${xi}" aria-label="Elimina esercizio" class="danger">${icon('trash')}</button>
       </div>
     </div>`;
 }
@@ -56,14 +56,14 @@ function dayEditor(d, di, count) {
       <div class="row">
         <label class="field grow"><span>Giorno ${di + 1}</span><input data-bind="days.${di}.name" value="${esc(d.name)}"></label>
         <div class="mini">
-          <button data-act="day-up" data-d="${di}" ${di ? '' : 'disabled'}>↑</button>
-          <button data-act="day-down" data-d="${di}" ${di < count - 1 ? '' : 'disabled'}>↓</button>
-          <button data-act="day-del" data-d="${di}" class="danger">✕</button>
+          <button data-act="day-up" data-d="${di}" aria-label="Sposta giorno su" ${di ? '' : 'disabled'}>${icon('arrow-up')}</button>
+          <button data-act="day-down" data-d="${di}" aria-label="Sposta giorno giù" ${di < count - 1 ? '' : 'disabled'}>${icon('arrow-down')}</button>
+          <button data-act="day-del" data-d="${di}" aria-label="Elimina giorno" class="danger">${icon('trash')}</button>
         </div>
       </div>
       <label class="field"><span>Note del giorno</span><input data-bind="days.${di}.notes" value="${esc(d.notes || '')}"></label>
       ${d.exercises.map((x, xi) => exerciseEditor(x, di, xi, d.exercises.length)).join('')}
-      <button class="btn secondary block" data-act="ex-add" data-d="${di}">+ Esercizio</button>
+      <button class="btn secondary block" data-act="ex-add" data-d="${di}">${icon('plus')}Esercizio</button>
     </div>`;
 }
 
@@ -112,10 +112,10 @@ export function renderEditor(pid) {
       ${numField('weeks', dr.weeks, 'Settimane')}
     </div>
     ${dr.days.map((d, di) => dayEditor(d, di, dr.days.length)).join('')}
-    <div class="btn-row"><button class="btn secondary block" data-act="day-add">+ Giorno</button></div>
-    <div class="btn-row">
+    <div class="btn-row"><button class="btn secondary block" data-act="day-add">${icon('plus')}Giorno</button></div>
+    <div class="action-bar">
       <button class="btn secondary" id="cancel">Annulla</button>
-      <button class="btn ok" id="save">Salva</button>
+      <button class="btn" id="save">${icon('check')}Salva</button>
     </div>
   `;
   view.querySelectorAll('[data-bind]').forEach(inp => {

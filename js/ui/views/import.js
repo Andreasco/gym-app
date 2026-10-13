@@ -1,17 +1,18 @@
-import { $, esc, toast } from '../dom.js';
+import { $, esc, toast, icon } from '../dom.js';
 import { view, setChrome } from '../shell.js';
 import { importProgram } from '../../core/store.js';
 import { validateProgram } from '../../core/validate.js';
 
-const errorBox = html => `<div class="notes" style="border-color:var(--danger)">${html}</div>`;
+const errorBox = html => `<div class="notes error" role="alert">${html}</div>`;
 
 export function renderImport() {
   setChrome('Importa scheda', { back: true, tab: 'home' });
   view.innerHTML = `
-    <p class="muted">Incolla qui il JSON della scheda generata da Claude, oppure scegli un file.</p>
-    <textarea id="json" placeholder='{ "name": "...", "days": [ ... ] }' autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+    <label class="field"><span>JSON della scheda generata da Claude</span>
+      <textarea id="json" placeholder='{ "name": "...", "days": [ ... ] }' autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
+    </label>
     <div class="btn-row">
-      <button class="btn secondary" id="paste">Incolla</button>
+      <button class="btn secondary" id="paste">${icon('copy')}Incolla</button>
       <label class="btn secondary">File…<input id="file" type="file" accept="application/json,.json" hidden></label>
     </div>
     <div id="result"></div>

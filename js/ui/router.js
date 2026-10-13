@@ -25,8 +25,11 @@ const routes = {
 
 export const currentRoute = () => location.hash.replace(/^#\/?/, '').split('/')[0];
 
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
 export function route() {
   const [name, ...params] = location.hash.replace(/^#\/?/, '').split('/').map(decodeURIComponent);
   view.scrollTop = 0;
   (routes[name] || renderNotFound)(...params);
+  if (!reducedMotion.matches) view.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 180, easing: 'ease-out' });
 }

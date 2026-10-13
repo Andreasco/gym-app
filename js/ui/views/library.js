@@ -1,6 +1,6 @@
 import { $, esc } from '../dom.js';
 import { view, setChrome } from '../shell.js';
-import { exerciseListItem, muscleOptions, equipmentOptions } from '../components.js';
+import { exerciseListItem, muscleChips, bindMuscleChips, equipmentOptions } from '../components.js';
 import { searchExercises } from '../../core/exercises.js';
 
 const filter = { q: '', muscle: '', equipment: '' };
@@ -9,12 +9,10 @@ const MAX_RESULTS = 150;
 export function renderLibrary() {
   setChrome('Esercizi', { tab: 'library' });
   view.innerHTML = `
-    <div class="filters">
-      <input id="q" type="search" placeholder="Cerca (es. bench, curl, squat)" value="${esc(filter.q)}">
-      <select id="muscle"><option value="">Tutti i muscoli</option>${muscleOptions(filter.muscle)}</select>
-      <select id="equipment"><option value="">Tutta l'attrezzatura</option>${equipmentOptions(filter.equipment)}</select>
-    </div>
-    <p class="muted" id="count"></p>
+    <input id="q" type="search" placeholder="Cerca (es. bench, curl, squat)" aria-label="Cerca esercizio" autocapitalize="off" autocorrect="off" value="${esc(filter.q)}">
+    ${muscleChips(filter.muscle)}
+    <select id="equipment" aria-label="Attrezzatura"><option value="">Tutta l'attrezzatura</option>${equipmentOptions(filter.equipment)}</select>
+    <p class="muted" id="count" style="margin-top:14px"></p>
     <div id="results"></div>
   `;
   const draw = () => {
@@ -24,7 +22,7 @@ export function renderLibrary() {
       (list.length > MAX_RESULTS ? '<p class="muted">Restringi la ricerca per vedere altri risultati.</p>' : '');
   };
   $('#q').oninput = e => { filter.q = e.target.value; draw(); };
-  $('#muscle').onchange = e => { filter.muscle = e.target.value; draw(); };
+  bindMuscleChips(view, m => { filter.muscle = m; draw(); });
   $('#equipment').onchange = e => { filter.equipment = e.target.value; draw(); };
   draw();
 }

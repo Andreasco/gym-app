@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://raw.githubusercontent.com; connect-src 'self' https://api.github.com https://raw.githubusercontent.com; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="no-referrer">
-  <meta name="theme-color" content="#0f1115">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -17,27 +17,32 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="topbar">
-    <button id="back" class="icon-btn" aria-label="Indietro" hidden>‹</button>
+  <!-- Elements with data-icon get their SVG from js/ui/shell.js -->
+  <header class="topbar root">
+    <button id="back" class="icon-btn" data-icon="chevron-left" aria-label="Indietro" hidden></button>
     <h1 id="title">Gym</h1>
-    <span class="spacer"></span>
   </header>
 
-  <main id="view" aria-live="polite"></main>
+  <main id="view"></main>
 
-  <div id="timer" class="timer" hidden>
-    <span>Recupero</span>
-    <strong id="timer-value">0:00</strong>
-    <button id="timer-minus" class="chip">−15s</button>
-    <button id="timer-plus" class="chip">+15s</button>
-    <button id="timer-stop" class="chip">Stop</button>
+  <div id="timer" class="timer" role="timer" aria-label="Recupero" hidden>
+    <div class="timer-track"><span id="timer-progress"></span></div>
+    <div class="timer-row">
+      <div class="grow">
+        <span class="timer-label">Recupero</span>
+        <strong id="timer-value">0:00</strong>
+      </div>
+      <button id="timer-minus" class="chip-btn" aria-label="Togli 15 secondi">−15</button>
+      <button id="timer-plus" class="chip-btn" aria-label="Aggiungi 15 secondi">+15</button>
+      <button id="timer-stop" class="icon-btn" data-icon="x" aria-label="Ferma timer"></button>
+    </div>
   </div>
 
-  <nav class="tabbar">
-    <a href="#/" data-tab="home">🏋️<span>Schede</span></a>
-    <a href="#/history" data-tab="history">📈<span>Storico</span></a>
-    <a href="#/library" data-tab="library">📚<span>Esercizi</span></a>
-    <a href="#/settings" data-tab="settings">⚙️<span>Dati</span></a>
+  <nav class="tabbar" aria-label="Sezioni">
+    <a href="#/" data-tab="home" data-icon="dumbbell"><span>Schede</span></a>
+    <a href="#/history" data-tab="history" data-icon="chart"><span>Storico</span></a>
+    <a href="#/library" data-tab="library" data-icon="list"><span>Esercizi</span></a>
+    <a href="#/settings" data-tab="settings" data-icon="database"><span>Dati</span></a>
   </nav>
 
   <script src="js/main.js" type="module"></script>
