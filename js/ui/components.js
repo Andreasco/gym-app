@@ -1,5 +1,5 @@
 // Reusable UI fragments (HTML strings) and the exercise picker overlay.
-import { esc, fmtTime, icon } from './dom.js';
+import { esc, fmtTime, fmtDay, fmtNum, icon } from './dom.js';
 import { IT, tr } from '../core/i18n.js';
 import { getExercise, plannedName, imageUrl, searchExercises } from '../core/exercises.js';
 import { getProgram, getActiveSession, startSession } from '../core/store.js';
@@ -124,4 +124,69 @@ export function pickExercise(title = 'Scegli esercizio') {
     draw();
     setTimeout(() => q.focus(), 50);
   });
+}
+
+// ---------- charts (inline SVG, single series, no dependencies) ----------
+
+const CHART_W = 328;
+
+// Columns with the value on the cap and a label under the baseline.
+// items: [{ value, text, label }]
+export function columnChart(items, title) {
+  const H = 148, base = 120, top = 18, r = 4;
+  const slot = CHART_W / items.length;
+  const bar = Math.min(24, slot - 8);
+  const max = Math.max(1, ...items.map(it => it.value));
+  return `
+    <svg class="chart" viewBox="0 0 ${CHART_W} ${H}" role="img" aria-label="${esc(title)}: ${esc(items.map(it => `${it.label} ${it.text}`).join(', '))}">
+      <line class="axis" x1="0" x2="${CHART_W}" y1="${base}" y2="${base}"/>
+      ${items.map((it, i) => {
+        const h = Math.round(it.value / max * (base - top));
+        const x = i * slot + (slot - bar) / 2;
+        const column = h > r
+          ? `<path class="bar" d="M${x},${base}v${r - h}a${r},${r} 0 0 1 ${r},${-r}h${bar - 2 * r}a${r},${r} 0 0 1 ${r},${r}v${h - r}z"/>`
+          : h > 0 ? `<rect class="bar" x="${x}" y="${base - h}" width="${bar}" height="${h}"/>` : '';
+        return `${column}
+          <text ${it.value ? 'class="val"' : ''} x="${x + bar / 2}" y="${base - h - 6}" text-anchor="middle">${esc(it.text)}</text>
+          <text x="${x + bar / 2}" y="${H - 10}" text-anchor="middle">${esc(it.label)}</text>`;
+      }).join('')}
+    </svg>`;
+}
+
+// Small trend line with a dot on the latest value. values: at least two numbers.
+export function sparkline(values) {
+  const W = 72, H = 28, pad = 5;
+  const min = Math.min(...values), max = Math.max(...values);
+  const y = v => (max === min ? H / 2 : H - pad - (v - min) / (max - min) * (H - 2 * pad));
+  const pts = values.map((v, i) => `${(pad + i * (W - 2 * pad) / (values.length - 1)).toFixed(1)},${y(v).toFixed(1)}`);
+  const [cx, cy] = pts.at(-1).split(',');
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" aria-hidden="true"><polyline class="line" points="${pts.join(' ')}"/><circle class="dot" cx="${cx}" cy="${cy}" r="4"/></svg>`;
+}
+
+// Line over time on round horizontal ticks, with the latest value written at the end of the line.
+// points: [{ date, value }], oldest first, at least two.
+export function lineChart(points, title) {
+  const H = 170, left = 34, right = CHART_W - 44, top = 14, base = 140;
+  const values = points.map(p => p.value);
+  const min = Math.min(...values), max = Math.max(...values);
+  const step = [1, 2.5, 5, 10, 25, 50].find(s => (max - min) / s <= 3) || 100;
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.max(lo + step, Math.ceil(max / step) * step);
+  const t0 = new Date(points[0].date).getTime();
+  const span = (new Date(points.at(-1).date) - t0) || 1;
+  const x = p => left + (new Date(p.date) - t0) / span * (right - left);
+  const y = v => base - (v - lo) / (hi - lo) * (base - top);
+  const pts = points.map(p => `${x(p).toFixed(1)},${y(p.value).toFixed(1)}`).join(' ');
+  const last = points.at(-1);
+  const ticks = Array.from({ length: Math.round((hi - lo) / step) + 1 }, (_, i) => lo + i * step);
+  return `
+    <svg class="chart" viewBox="0 0 ${CHART_W} ${H}" role="img" aria-label="${esc(title)}: da ${fmtNum(values[0])} a ${fmtNum(last.value)} kg in ${points.length} allenamenti">
+      ${ticks.map(v => `<line class="grid" x1="${left}" x2="${CHART_W}" y1="${y(v)}" y2="${y(v)}"/><text x="${left - 6}" y="${y(v) + 4}" text-anchor="end">${fmtNum(v)}</text>`).join('')}
+      <polygon class="area" points="${left},${base} ${pts} ${right},${base}"/>
+      <polyline class="line" points="${pts}"/>
+      <circle class="dot" cx="${x(last).toFixed(1)}" cy="${y(last.value).toFixed(1)}" r="4"/>
+      <text class="val" x="${right + 8}" y="${y(last.value) + 4}">${fmtNum(last.value)}</text>
+      <text x="${left}" y="${H - 8}">${fmtDay(points[0].date)}</text>
+      <text x="${right}" y="${H - 8}" text-anchor="end">${fmtDay(last.date)}</text>
+    </svg>`;
 }

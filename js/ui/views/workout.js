@@ -1,4 +1,4 @@
-import { $, esc, fmtDate, toast, icon } from '../dom.js';
+import { $, esc, fmtDate, fmtNum, fmtCompact, fmtSigned, toast, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
 import { pickExercise, targetLine, statTiles } from '../components.js';
 import { startTimer, stopTimer } from '../timer.js';
@@ -6,10 +6,11 @@ import {
   getSession, getProgram, updateSet, toggleSet, addSet, setEntryNote, swapEntryExercise, addEntry,
   finishSession, countDoneSets, discardSession, deleteSession, requestSync,
 } from '../../core/store.js';
-import { lastPerformance, lastNote, planFor, sessionSummary, progressionHint } from '../../core/queries.js';
+import { lastPerformance, lastNote, planFor, sessionReport, progressionHint } from '../../core/queries.js';
 import { getExercise, exerciseName, plannedName, imageUrl } from '../../core/exercises.js';
 
-const kg = n => `${String(n).replace('.', ',')} kg`;
+const kg = n => `${fmtNum(n)} kg`;
+const delta = (n, unit, good = n > 0) => `<span class="delta ${good ? 'up' : ''}">${n ? fmtSigned(n) + unit : 'uguale'}</span>`;
 
 // One line telling whether to add load or repeat it, from the last time the exercise was done.
 function hintLine(plan, last) {
@@ -21,7 +22,20 @@ function hintLine(plan, last) {
   return `<p class="hint ${h.up ? 'up' : ''}">${icon(h.up ? 'arrow-up' : 'refresh')}<span>${text}</span></p>`;
 }
 
-function entryCard(s, e, ei, readOnly) {
+// Top set of an exercise in a finished workout and how it compares with the time before.
+function reportLine(r) {
+  if (!r) return '';
+  const weight = st => Number(st.weight) || 0;
+  const reps = st => Number(st.reps) || 0;
+  const best = weight(r.best) ? `${kg(weight(r.best))} × ${reps(r.best)}` : `${reps(r.best)} ripetizioni`;
+  const p = r.previousBest;
+  const dw = p ? weight(r.best) - weight(p) : 0;
+  const dr = p ? reps(r.best) - reps(p) : 0;
+  const change = !p ? '' : dw ? delta(dw, ' kg') : dr ? delta(dr, ' rip.') : 'come la volta prima';
+  return `<p class="hint">${icon('chart')}<span>Serie migliore <b>${best}</b>${change ? ` · ${change}` : ''}</span></p>`;
+}
+
+function entryCard(s, e, ei, readOnly, report) {
   const x = planFor(s, e);
   const ex = getExercise(e.exerciseId);
   const last = lastPerformance(e.exerciseId, s.id);
@@ -33,14 +47,14 @@ function entryCard(s, e, ei, readOnly) {
       <a class="row" href="#/exercise/${encodeURIComponent(e.exerciseId)}">
         ${ex ? `<img class="thumb" loading="lazy" src="${imageUrl(ex)}" alt="">` : ''}
         <div class="grow">
-          <h3>${esc(e.name || exerciseName(e.exerciseId))}</h3>
+          <h3>${esc(e.name || exerciseName(e.exerciseId))} ${report?.record ? '<span class="badge ok">Record</span>' : ''}</h3>
           ${swapped ? `<p class="muted small">al posto di ${esc(plannedName(x))}</p>` : ''}
           ${targetLine({ ...x, sets: x.sets ?? e.sets.length }, 'Obiettivo ')}
         </div>
         ${icon('chevron-right', 'muted')}
       </a>
       ${x.notes ? `<div class="notes">${esc(x.notes)}</div>` : ''}
-      ${readOnly ? '' : hintLine(x, last)}
+      ${readOnly ? reportLine(report) : hintLine(x, last)}
       <div class="sets" ${e.sets.length ? '' : 'hidden'}>
         <div class="set-head" aria-hidden="true"><span>#</span><span>Prec.</span><span>kg</span><span>Reps</span><span></span></div>
         ${e.sets.map((st, si) => `
@@ -61,12 +75,38 @@ function entryCard(s, e, ei, readOnly) {
     </section>`;
 }
 
-function header(s, readOnly) {
+// Report on top of a finished workout: totals, comparison with the previous time, records.
+function summary(s, report, meta) {
+  const justFinished = Date.now() - new Date(s.finishedAt) < 2 * 60 * 1000;
+  const prev = report.previous;
+  const records = report.exercises.filter(x => x.record);
+  return `
+    <p class="eyebrow">${justFinished ? 'Allenamento completato' : 'Riepilogo'}</p>
+    <p class="muted">${meta}</p>
+    ${statTiles([[report.minutes, 'minuti'], [report.sets, 'serie'], [report.reps, 'ripetizioni'], [fmtCompact(report.volume), 'kg totali']])}
+    ${prev ? `
+      <div class="card">
+        <p class="muted small">Rispetto a ${fmtDate(prev.date)}</p>
+        <div class="chips">
+          ${prev.volume ? `<span class="chip">Volume ${delta(Math.round((report.volume - prev.volume) / prev.volume * 100), '%')}</span>` : ''}
+          <span class="chip">Ripetizioni ${delta(report.reps - prev.reps, '')}</span>
+          <span class="chip">Serie ${delta(report.sets - prev.sets, '')}</span>
+          <span class="chip">Durata ${delta(report.minutes - prev.minutes, ' min', false)}</span>
+        </div>
+      </div>` : ''}
+    ${records.length ? `
+      <div class="card ok row">
+        ${icon('trophy')}
+        <div class="grow">
+          <h3>${records.length === 1 ? 'Record battuto' : `${records.length} record battuti`}</h3>
+          <p class="muted">${records.map(x => esc(x.name)).join(', ')}</p>
+        </div>
+      </div>` : ''}`;
+}
+
+function header(s, report) {
   const meta = `${esc(s.programName || getProgram(s.programId)?.name || '')} · ${fmtDate(s.startedAt)}`;
-  if (readOnly) {
-    const { sets, volume, minutes } = sessionSummary(s);
-    return `<p class="muted">${meta}</p>${statTiles([[minutes, 'minuti'], [sets, 'serie'], [volume, 'kg totali']])}`;
-  }
+  if (report) return summary(s, report, meta);
   const total = s.entries.reduce((n, e) => n + e.sets.length, 0);
   const done = countDoneSets(s.id);
   return `
@@ -83,11 +123,12 @@ export function renderWorkout(sid) {
   if (!s) return renderNotFound();
   const readOnly = !!s.finishedAt;
   setChrome(s.dayName, { back: true, tab: readOnly ? 'history' : 'home' });
+  const report = readOnly ? sessionReport(s) : null;
   const rerender = () => renderWorkout(sid);
 
   view.innerHTML = `
-    ${header(s, readOnly)}
-    ${s.entries.map((e, ei) => entryCard(s, e, ei, readOnly)).join('')}
+    ${header(s, report)}
+    ${s.entries.map((e, ei) => entryCard(s, e, ei, readOnly, report?.exercises.find(x => x.exerciseId === e.exerciseId))).join('')}
     ${readOnly ? `
       <div class="btn-row"><button class="btn danger block" id="delete">${icon('trash')}Elimina allenamento</button></div>
     ` : `
@@ -129,10 +170,12 @@ export function renderWorkout(sid) {
   });
   $('#finish')?.addEventListener('click', () => {
     if (!countDoneSets(sid) && !confirm('Nessuna serie completata. Terminare comunque?')) return;
-    const { doneSets, records } = finishSession(sid);
+    finishSession(sid);
     stopTimer();
-    toast(`Allenamento salvato: ${doneSets} serie${records.length ? ` · Nuovo record: ${records.join(', ')}` : ''}`, records.length ? 5000 : 2500);
-    location.hash = '#/history';
+    toast('Allenamento salvato');
+    // Same route: show the report in place instead of navigating.
+    rerender();
+    view.scrollTop = 0;
   });
   $('#discard')?.addEventListener('click', () => {
     if (!confirm('Scartare questo allenamento?')) return;

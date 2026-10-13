@@ -1,6 +1,6 @@
 // Read-only derived data (history, records, program statistics). No DOM access.
 import { getState, getProgram } from './store.js';
-import { getExercise } from './exercises.js';
+import { getExercise, exerciseName } from './exercises.js';
 import { DEFAULT_REST_SEC } from './config.js';
 
 export const e1rm = st => (Number(st.weight) || 0) * (1 + (Number(st.reps) || 0) / 30); // Epley
@@ -96,6 +96,7 @@ export function programStats(p) {
 export function sessionSummary(s) {
   return {
     sets: s.entries.reduce((n, e) => n + e.sets.length, 0),
+    reps: s.entries.reduce((n, e) => n + e.sets.reduce((m, x) => m + (Number(x.reps) || 0), 0), 0),
     volume: Math.round(s.entries.reduce((n, e) => n + e.sets.reduce((m, x) => m + (Number(x.weight) || 0) * (Number(x.reps) || 0), 0), 0)),
     minutes: Math.round((new Date(s.finishedAt) - new Date(s.startedAt)) / 60000),
   };
@@ -107,3 +108,80 @@ export const sortedPrograms = () => {
   return [...programs].sort((a, b) =>
     (b.id === activeProgramId) - (a.id === activeProgramId) || b.importedAt.localeCompare(a.importedAt));
 };
+
+// ---------- reports and statistics ----------
+
+const topSet = sets => sets.reduce((best, x) => (!best || e1rm(x) > e1rm(best) ? x : best), null);
+
+// Report of a finished workout, judged against the workouts that came before it:
+// totals, the previous time the same day was done, and for each exercise the top set,
+// the top set of the time before and whether it was a record when it happened.
+export function sessionReport(s) {
+  const earlier = finishedSessions().filter(x => x.startedAt < s.startedAt);
+  const previous = earlier.find(x => x.programId === s.programId && x.dayId === s.dayId);
+  const exercises = s.entries.filter(e => e.sets.length).map(e => {
+    const past = earlier.flatMap(x => x.entries.filter(y => y.exerciseId === e.exerciseId && y.sets.length));
+    const best = topSet(e.sets);
+    return {
+      exerciseId: e.exerciseId,
+      name: e.name || exerciseName(e.exerciseId),
+      best,
+      previousBest: past.length ? topSet(past[0].sets) : null,
+      record: e1rm(best) > 0 && past.length > 0 && e1rm(best) > Math.max(...past.flatMap(y => y.sets.map(e1rm))),
+    };
+  });
+  return {
+    ...sessionSummary(s),
+    previous: previous ? { date: previous.startedAt, ...sessionSummary(previous) } : null,
+    exercises,
+  };
+}
+
+// Monday 00:00 (local time) of the week a date falls in.
+function weekStart(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return d;
+}
+
+// Workouts and lifted volume for each of the last `count` calendar weeks, oldest first.
+export function weeklyTotals(count = 8) {
+  const first = weekStart(Date.now());
+  first.setDate(first.getDate() - 7 * (count - 1));
+  const weeks = Array.from({ length: count }, (_, i) => {
+    const start = new Date(first);
+    start.setDate(start.getDate() + 7 * i);
+    return { start, workouts: 0, volume: 0 };
+  });
+  for (const s of finishedSessions()) {
+    const week = weeks[Math.round((weekStart(s.startedAt) - first) / (7 * 864e5))];
+    if (!week) continue;
+    week.workouts++;
+    week.volume += sessionSummary(s).volume;
+  }
+  return weeks;
+}
+
+// Best estimated 1RM per workout for every exercise done with a load, oldest first.
+function strengthByExercise() {
+  const byId = new Map();
+  for (const s of [...finishedSessions()].reverse()) {
+    for (const e of s.entries) {
+      const value = Math.max(0, ...e.sets.map(e1rm));
+      if (!value) continue;
+      if (!byId.has(e.exerciseId)) byId.set(e.exerciseId, { exerciseId: e.exerciseId, series: [] });
+      const trend = byId.get(e.exerciseId);
+      trend.name = e.name || exerciseName(e.exerciseId);
+      trend.series.push({ date: s.startedAt, value });
+    }
+  }
+  return byId;
+}
+
+export const strengthSeries = exerciseId => strengthByExercise().get(exerciseId)?.series || [];
+
+// Exercises with at least two data points, most trained first.
+export const strengthTrends = () => [...strengthByExercise().values()]
+  .filter(t => t.series.length >= 2)
+  .sort((a, b) => b.series.length - a.series.length);

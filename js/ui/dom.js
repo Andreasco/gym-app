@@ -2,8 +2,13 @@
 export const $ = sel => document.querySelector(sel);
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const fmtDate = iso => new Date(iso).toLocaleDateString('it-IT', { weekday: 'short', day: 'numeric', month: 'short' });
+export const fmtDay = iso => new Date(iso).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 export const fmtTime = sec => `${Math.floor(sec / 60)}:${String(Math.max(0, sec) % 60).padStart(2, '0')}`;
 export const fmtClock = date => date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+// 62.5 -> "62,5"; large totals are shortened (12480 -> "12,5k").
+export const fmtNum = n => String(Math.round(n * 10) / 10).replace('.', ',');
+export const fmtCompact = n => (n >= 10000 ? fmtNum(n / 1000) + 'k' : fmtNum(n));
+export const fmtSigned = n => (n > 0 ? '+' : n < 0 ? '−' : '') + fmtNum(Math.abs(n));
 export const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 export const fileSlug = name => name.replace(/\W+/g, '-').toLowerCase();
 
@@ -28,6 +33,7 @@ const ICONS = {
   dumbbell: '<path d="M6.5 6.5v11"/><path d="M17.5 6.5v11"/><path d="M3 9.5v5"/><path d="M21 9.5v5"/><path d="M6.5 12h11"/>',
   chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>',
   list: '<path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/>',
+  trophy: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>',
   database: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14a9 3 0 0 0 18 0V5"/><path d="M3 12a9 3 0 0 0 18 0"/>',
 };
 export const icon = (name, cls = '') => `<svg class="icon ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
