@@ -6,7 +6,7 @@ import { loadConfig, saveConfig, sync, testConnection, queueDelete } from './syn
 const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 const STORE_KEY = 'gymapp.v1';
 const SCHEMA_VERSION = 1;
-const APP_VERSION = '2026-10-13.4';
+const APP_VERSION = '2026-10-13.5';
 
 const IT = {
   muscles: {
@@ -635,7 +635,7 @@ function renderSettings() {
     ` : `
       <p class="muted">Collega una repository GitHub <b>privata</b> per avere backup automatico e schede pubblicate da Claude. Serve un token fine-grained con accesso solo a quella repository (Contents: Read and write).</p>
       <div class="filters">
-        <input id="gh-repo" placeholder="owner/repo" value="Andreasco/gym-data" autocapitalize="off" autocorrect="off" spellcheck="false">
+        <input id="gh-repo" placeholder="owner/repo" value="Andreasco/gym-app-data" autocapitalize="off" autocorrect="off" spellcheck="false">
         <input id="gh-token" type="password" placeholder="Token (github_pat_…)" autocomplete="off" autocapitalize="off" spellcheck="false">
       </div>
       <div class="btn-row"><button class="btn" id="sync-connect">Collega</button></div>

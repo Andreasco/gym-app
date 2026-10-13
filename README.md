@@ -50,7 +50,7 @@ Static web app for gym workout plans. No backend, no build step: it runs on GitH
 
 ## GitHub sync
 
-*Dati → Sincronizzazione GitHub* links a private data repository (default `Andreasco/gym-data`) using a
+*Dati → Sincronizzazione GitHub* links a private data repository (default `Andreasco/gym-app-data`) using a
 fine-grained personal access token scoped to that single repository with **Contents: Read and write** only.
 The token is stored in `localStorage` on the device and sent only to `api.github.com` (enforced by the page CSP).
 
