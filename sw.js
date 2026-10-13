@@ -1,5 +1,5 @@
 // Offline support: app shell is precached, exercise images are cached on first view.
-const VERSION = 'v8';
+const VERSION = 'v9';
 const SHELL = `gym-shell-${VERSION}`;
 const IMAGES = 'gym-images';
 const SHELL_FILES = [

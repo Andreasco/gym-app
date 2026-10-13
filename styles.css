@@ -39,6 +39,11 @@ body {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
+/* Home-screen app on iOS: dvh comes out short by the status bar height and leaves a gap
+   under the tab bar; vh matches the full web view there. */
+@media (display-mode: standalone) {
+  html, body { height: 100vh; }
+}
 a { color: var(--accent); text-decoration: none; }
 a, button, label, input, select, textarea { touch-action: manipulation; }
 button { cursor: pointer; }
