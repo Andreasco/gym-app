@@ -1,6 +1,6 @@
 {
-  "name": "Gym – Schede palestra",
-  "short_name": "Gym",
+  "name": "GymApp – Schede palestra",
+  "short_name": "GymApp",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

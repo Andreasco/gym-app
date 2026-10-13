@@ -35,7 +35,7 @@ export function assistantPrompt() {
     const ids = allExercises().filter(e => e.primaryMuscles[0] === muscle).map(e => `${e.id} (${tr('equipment', e.equipment)})`);
     return ids.length ? `${tr('muscles', muscle)}:\n${ids.join('\n')}` : '';
   }).filter(Boolean).join('\n\n');
-  return `Devi scrivere una scheda di allenamento in palestra per l'app "Gym" e restituirla in formato JSON.
+  return `Devi scrivere una scheda di allenamento in palestra per l'app "GymApp" e restituirla in formato JSON.
 
 PRIMA fammi le domande che ti servono: obiettivo, giorni a settimana, durata di una seduta, esperienza, attrezzatura disponibile, infortuni o dolori, esercizi che voglio o che non voglio. Non scrivere la scheda finché non ho risposto.
 
