@@ -56,6 +56,7 @@ Rules:
 - `js/core` must never touch the DOM. `js/ui` reads data through getters and queries and changes state **only** through `store.js` actions.
 - A visual redesign should only touch `styles.css`, `index.html` and `js/ui/`.
 - Routes are hash-based (`#/program/<id>/<dayId>`, `#/workout/<id>`, `#/edit/<id>`, …) and are registered in `js/ui/router.js`.
+- Editing is split in two screens, each with its own draft and save: `#/edit/<id>` for the program details and day order, `#/edit/<id>/<dayId>` for one day (`new` as `dayId` creates a day).
 - The layout is a flex app shell where only `<main>` scrolls. Do not reintroduce `position: fixed` bars on a scrolling body: they jumped on iOS.
 - Keep `.topbar` as `position: sticky; top: 0` with a plain `background-color` and no `backdrop-filter`. Since iOS 26 the installed app blurs the top of the page unless it finds such a box at the top edge. This only shows in the Home Screen app, not in a Safari tab or in desktop emulation.
 - In standalone mode the shell height is `100dvh` plus the top safe-area inset (see `styles.css`): on iOS `dvh` excludes the status bar even when the page is drawn under it.

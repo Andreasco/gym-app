@@ -8,7 +8,7 @@ import { renderHistory } from './views/history.js';
 import { renderLibrary } from './views/library.js';
 import { renderExercise } from './views/exercise.js';
 import { renderImport } from './views/import.js';
-import { renderEditor } from './views/editor.js';
+import { renderEditor, renderDayEditor } from './views/editor.js';
 import { renderSettings } from './views/settings.js';
 
 const routes = {
@@ -19,7 +19,7 @@ const routes = {
   library: renderLibrary,
   exercise: renderExercise,
   import: renderImport,
-  edit: renderEditor,
+  edit: (pid, did) => (did ? renderDayEditor(pid, did) : renderEditor(pid)),
   settings: renderSettings,
 };
 

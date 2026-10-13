@@ -290,7 +290,14 @@ button.card.pick { width: 100%; border: 0; text-align: left; font: inherit; }
 .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 10px 0 8px; }
 .grid5 .field { margin: 0; }
 .grid5 input { padding: 8px 4px; text-align: center; }
-.ex-edit { border-top: 1px solid var(--border); padding: 14px 0; }
+/* Exercise row in the day editor: a <details> that opens to show its fields. */
+.ex-edit { padding: 0; }
+.ex-edit > summary { gap: 12px; padding: 12px; color: inherit; list-style: none; }
+.ex-edit > summary::-webkit-details-marker { display: none; }
+.ex-edit .chev { transition: transform .15s; }
+.ex-edit[open] .chev { transform: rotate(90deg); }
+.ex-body { padding: 0 12px 12px; }
+.ex-body .field:first-child { margin-top: 0; }
 .mini { display: flex; gap: 6px; flex-wrap: wrap; }
 .mini button {
   min-width: 44px; height: 44px; padding: 0 12px;
@@ -300,8 +307,6 @@ button.card.pick { width: 100%; border: 0; text-align: left; font: inherit; }
 .mini button:active { opacity: .7; }
 .mini button.danger { color: var(--danger); }
 .mini button:disabled { opacity: .35; }
-.day-edit .row { align-items: flex-end; }
-.day-edit .row .field { margin-bottom: 0; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }

@@ -14,7 +14,7 @@ function nextWorkoutCard(p) {
       <a class="row" href="#/program/${encodeURIComponent(p.id)}/${encodeURIComponent(st.next.id)}">
         <h2 class="grow ellipsis">${esc(st.next.name)}</h2>${icon('chevron-right', 'muted')}
       </a>
-      <p class="muted">${esc(p.name)} · ${st.next.exercises.length} esercizi · ~${estMinutes(st.next)} min</p>
+      <p class="muted">${esc(p.name)} · ${plural(st.next.exercises.length, 'esercizio', 'esercizi')} · ~${estMinutes(st.next)} min</p>
       <button class="btn block" id="start-next">${icon('play')}Inizia allenamento</button>
     </section>`;
 }

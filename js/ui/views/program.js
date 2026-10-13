@@ -1,4 +1,4 @@
-import { $, esc, fmtDate, toast, shareOrDownload, fileSlug, icon } from '../dom.js';
+import { $, esc, fmtDate, plural, toast, shareOrDownload, fileSlug, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
 import { runningCard, programMetaChips, statTiles } from '../components.js';
 import { getState, getProgram, setActiveProgram, duplicateProgram } from '../../core/store.js';
@@ -25,13 +25,15 @@ export function renderProgram(pid) {
       <a class="card ${isNext ? 'ok' : ''}" href="#/program/${encodeURIComponent(p.id)}/${encodeURIComponent(d.id)}">
         <div class="row"><div class="grow">
           <h3>${i + 1}. ${esc(d.name)} ${isNext ? '<span class="badge ok">Prossimo</span>' : ''}</h3>
-          <p class="muted small">${d.exercises.length} esercizi · ~${estMinutes(d)} min${last ? ` · ultimo ${fmtDate(last.startedAt)}` : ''}</p>
+          <p class="muted small">${plural(d.exercises.length, 'esercizio', 'esercizi')} · ~${estMinutes(d)} min${last ? ` · ultimo ${fmtDate(last.startedAt)}` : ''}</p>
           <p class="muted ellipsis small">${d.exercises.map(x => esc(plannedName(x))).join(' · ')}</p>
         </div>${icon('chevron-right', 'muted')}</div>
       </a>`;
     }).join('')}
+    <div class="btn-row"><a class="btn secondary block" href="#/edit/${encodeURIComponent(p.id)}/new">${icon('plus')}Aggiungi giorno</a></div>
+    <h2>Scheda</h2>
     <div class="btn-row">
-      <a class="btn secondary" href="#/edit/${encodeURIComponent(p.id)}">${icon('pencil')}Modifica</a>
+      <a class="btn secondary" href="#/edit/${encodeURIComponent(p.id)}">${icon('pencil')}Modifica scheda</a>
       ${isActive ? '' : `<button class="btn" id="activate">${icon('check')}Imposta come attiva</button>`}
     </div>
     <div class="btn-row">

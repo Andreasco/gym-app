@@ -1,4 +1,4 @@
-import { $, esc, icon } from '../dom.js';
+import { $, esc, plural, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
 import { exerciseRow, startWorkout } from '../components.js';
 import { getProgram } from '../../core/store.js';
@@ -10,7 +10,10 @@ export function renderDay(pid, did) {
   if (!d) return renderNotFound();
   setChrome(d.name, { back: true, tab: 'home' });
   view.innerHTML = `
-    <p class="muted"><a href="#/program/${encodeURIComponent(p.id)}">${esc(p.name)}</a> · ${d.exercises.length} esercizi · ~${estMinutes(d)} min</p>
+    <div class="row">
+      <p class="muted grow"><a href="#/program/${encodeURIComponent(p.id)}">${esc(p.name)}</a> · ${plural(d.exercises.length, 'esercizio', 'esercizi')} · ~${estMinutes(d)} min</p>
+      <a class="btn secondary small" href="#/edit/${encodeURIComponent(p.id)}/${encodeURIComponent(d.id)}">${icon('pencil')}Modifica</a>
+    </div>
     ${d.notes ? `<div class="notes">${esc(d.notes)}</div>` : ''}
     ${d.exercises.map(x => exerciseRow(x)).join('')}
     <div class="action-bar"><button class="btn" id="start">${icon('play')}Inizia allenamento</button></div>
