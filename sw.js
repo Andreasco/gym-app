@@ -1,5 +1,5 @@
 // Offline support: app shell is precached, exercise images are cached on first view.
-const VERSION = 'v16';
+const VERSION = 'v17';
 const SHELL = `gym-shell-${VERSION}`;
 const IMAGES = 'gym-images';
 const SHELL_FILES = [
@@ -28,7 +28,7 @@ const SHELL_FILES = [
   'js/ui/views/program.js',
   'js/ui/views/settings.js',
   'js/ui/views/workout.js',
-  'data/exercises.json', 'programs/starter.json',
+  'data/exercises.json',
   'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 

@@ -2,9 +2,8 @@
 // Layers:
 //   js/core/*  state, domain logic, data access, GitHub sync — no DOM access
 //   js/ui/*    rendering and event handling — changes state only through core/store.js actions
-import { STORE_KEY } from './core/config.js';
 import { loadExercises } from './core/exercises.js';
-import { getState, subscribe, importProgram } from './core/store.js';
+import { subscribe } from './core/store.js';
 import { runSync, onSyncEvent } from './core/sync-service.js';
 import { toast } from './ui/dom.js';
 import { view, initShell } from './ui/shell.js';
@@ -29,15 +28,6 @@ onSyncEvent(event => {
   if (event.type === 'error' && (!event.quiet || event.status === 401)) toast('Sync non riuscito: ' + event.message, 4000);
   renderSyncStatus();
 });
-
-// First run: load the bundled starter program so the app is usable immediately.
-async function seedStarterProgram() {
-  if (getState().programs.length || localStorage.getItem(STORE_KEY + '.seeded')) return;
-  try {
-    importProgram(await (await fetch('programs/starter.json')).json(), { sync: false });
-  } catch { /* no starter program */ }
-  localStorage.setItem(STORE_KEY + '.seeded', '1');
-}
 
 // iOS keeps a home-screen PWA suspended in memory, so "reopening" it does not reload the page.
 // Check for a new version whenever the app comes back to the foreground and reload once it is installed.
@@ -65,7 +55,6 @@ async function boot() {
   initTimer();
   view.innerHTML = '<div class="empty">Caricamento…</div>';
   await loadExercises();
-  await seedStarterProgram();
 
   window.addEventListener('hashchange', route);
   route();

@@ -35,7 +35,6 @@ styles.css            all styling; design tokens in :root
 sw.js                 service worker (precache list + cache strategy)
 manifest.webmanifest  PWA manifest; icons/ holds app icons
 data/exercises.json   exercise catalog
-programs/starter.json starter program seeded on first run
 js/main.js            entry point: wires core events to the UI, boot, SW registration
 js/core/              application logic — NO DOM access
   config.js           APP_VERSION, storage key, constants
