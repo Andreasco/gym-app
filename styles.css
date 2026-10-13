@@ -43,8 +43,9 @@ body {
    under the tab bar; vh matches the full web view there. */
 @media (display-mode: standalone) {
   html, body { height: 100vh; }
-  /* iOS blurs content right under the status bar: start the header lower. */
-  :root { --safe-top: calc(env(safe-area-inset-top, 0px) + 44px); }
+  /* Installs made with the old translucent status bar draw under it, and iOS blurs that area:
+     start the header lower there. The min() is 0 when nothing is drawn under the status bar. */
+  :root { --safe-top: calc(env(safe-area-inset-top, 0px) + min(44px, env(safe-area-inset-top, 0px) * 100)); }
 }
 a { color: var(--accent); text-decoration: none; }
 a, button, label, input, select, textarea { touch-action: manipulation; }
