@@ -39,13 +39,10 @@ body {
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
-/* Home-screen app on iOS: dvh comes out short by the status bar height and leaves a gap
-   under the tab bar; vh matches the full web view there. */
+/* Home-screen app on iOS: dvh excludes the status bar even when the page is drawn under it,
+   which left a gap under the tab bar. The top inset is 0 when the page starts below the bar. */
 @media (display-mode: standalone) {
-  html, body { height: 100vh; }
-  /* Installs made with the old translucent status bar draw under it, and iOS blurs that area:
-     start the header lower there. The min() is 0 when nothing is drawn under the status bar. */
-  :root { --safe-top: calc(env(safe-area-inset-top, 0px) + min(44px, env(safe-area-inset-top, 0px) * 100)); }
+  html, body { height: calc(100dvh + env(safe-area-inset-top, 0px)); }
 }
 a { color: var(--accent); text-decoration: none; }
 a, button, label, input, select, textarea { touch-action: manipulation; }
@@ -68,6 +65,9 @@ p { margin: 6px 0; }
 /* ---------- shell ---------- */
 
 .topbar {
+  /* Sticky with a plain background: iOS 26+ blurs the top of an installed web app unless it finds
+     such a box at the top edge. The body never scrolls, so this does not move the bar. */
+  position: sticky; top: 0; z-index: 3;
   flex: none;
   display: flex; align-items: center;
   min-height: calc(44px + var(--safe-top)); padding: var(--safe-top) var(--gutter) 0;
