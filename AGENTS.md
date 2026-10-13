@@ -8,7 +8,7 @@ Guide for AI agents (Claude Code and others) working on this repository.
 
 - **Live:** https://andreasco.github.io/gym-app/ (GitHub Pages, branch `main`, root `/`). Every push to `main` deploys automatically in about a minute.
 - **Code repo:** `Andreasco/gym-app` (public, required for free GitHub Pages; it contains no personal data).
-- **Data repo:** `Andreasco/gym-app-data` (private): the user's programs and workout history, synced by the app.
+- **Data repo:** `Andreasco/gym-app-data` (private): the user's programs, workout history and training profile. The app syncs the first two.
 
 ## Working agreements (Andrea's preferences)
 
@@ -94,16 +94,68 @@ Full reference in `README.md`. Summary:
 - Required fields: `name`, `days[].name`, `days[].exercises[].exerciseId`, and `sets` > 0. `reps` is a string (`"8"`, `"6-8"`, `"45s"`). `level` is `beginner|intermediate|expert`.
 - Give each day a stable `id`: sessions reference `dayId`.
 
+## Writing a new program for Andrea
+
+Andrea's training profile (goal, schedule, equipment, injuries, exercises to avoid, reference loads, log of past blocks) is personal data. It lives in the private data repo as `PROFILE.md`. This repository is public: never copy that information, or a program file, into it.
+
+### Steps
+
+1. Read `PROFILE.md` and the current program in `gym-app-data`.
+2. Read `sessions/**` since the last block: weights, reps and notes. An entry whose `planId` differs from its `exerciseId` is an exercise he swapped; `planId: null` is one he added.
+3. Ask Andrea what changed before designing: goal, sessions per week, session length, pain or injuries, exercises he wants in or out. Do not assume the profile is still current.
+4. Design the block, build the JSON in a temporary directory, check it and publish it (below).
+5. Update `PROFILE.md`: any change to the profile, plus one entry in the block log with the reasoning and the weekly sets per muscle group.
+6. Tell Andrea to open the app. A pulled program is not activated automatically: he opens it and taps "Imposta come attiva".
+
+### Conventions
+
+- A block lasts 4 weeks: `"weeks": 4`.
+- A new block is a new file with a new `id`, `<split>-<yyyy>-<mm>` (for example `full-body-2026-10`). Leave the previous block in place: past sessions point at it. To correct the current block, edit the same file and keep its `id` and the day ids.
+- Everything shown in the app is Italian: program and day names, `description`, `notes`, and a `name` on every exercise (catalog names are English).
+- Intensity goes in `rpe`. His old sheets used RIR: RIR 2 is RPE 8.
+- Session length: the app estimates `sets × (restSec + 45 s)` per exercise. Keep that estimate about 10 minutes under the session length he asked for, to leave room for the warm-up.
+- Put the warm-up in the day `notes`. Keep exercise `notes` to one short line: they are shown on the workout card every time.
+
+### What the schema cannot express
+
+- **Weekly changes.** An exercise has one prescription, the same every week. Write the rule for the block (which week to add load, which week to deload) in `description`.
+- **Supersets.** List the two exercises one after the other, say so in both `notes`, and give the first a short `restSec` such as 20. Do not use 0: it falls back to the 90-second default.
+- **Starting loads.** `weightKg` only prefills the first workout of an exercise with no history. After that the app prefills the weights used last time.
+- **Per-day history.** History, prefill and records are keyed by `exerciseId` across all days and programs. Variants that use different loads need different catalog ids (dumbbell and cable lateral raises, for example). Never use the same `exerciseId` twice in one day.
+
+### What the app derives from the program
+
+- **Progression hint.** On each workout card the app compares the last time the exercise was done with `reps`. If every planned set reached the top of the range it suggests more load (+2.5 kg from 20 kg up, +1 kg below, added weight for bodyweight work); otherwise it suggests repeating the load. This needs `reps` as a number or a range (`"8"`, `"6-8"`); other formats such as `"45s"` show no hint. The hint knows nothing about deload weeks: mention that in `description` when the block has one.
+- **Week counter.** A "week" is one completed round of all the days, not a calendar week. When the rounds reach `weeks` the home screen shows "Blocco completato": that is the cue for the next block.
+
+### Checking and publishing
+
+There is no command-line validator. Before publishing, check the file against `js/core/validate.js` (a name, at least one day, no day without exercises, `sets` > 0) and make sure every `exerciseId` is in the catalog:
+
+```bash
+jq -r '.[] | select(.name|test("lateral raise";"i")) | .id + " | " + .equipment' data/exercises.json
+```
+
+Publish with the contents API. To update an existing file, add its current `sha`:
+
+```bash
+gh api -X PUT repos/Andreasco/gym-app-data/contents/programs/<id>.json   -f message="Add program <name>" -f content="$(base64 -w0 <file>)"
+
+gh api -X PUT repos/Andreasco/gym-app-data/contents/programs/<id>.json   -f message="Update program <name>" -f content="$(base64 -w0 <file>)"   -f sha="$(gh api repos/Andreasco/gym-app-data/contents/programs/<id>.json --jq .sha)"
+```
+
+Deleting a program file removes it from the phone on the next sync, unless it was edited there and not yet synced.
+
 ## Data repo and sync (`Andreasco/gym-app-data`)
 
 ```
+PROFILE.md                               Andrea's training profile and block log (ignored by the app)
 programs/<id>.json                       one file per program
 sessions/<yyyy>/<yyyy-mm-dd>-<id>.json   one file per finished workout
 ```
 
 - Session shape: `{ id, programId, programName, dayId, dayName, startedAt, finishedAt, entries: [{ exerciseId, planId, name, note, sets: [{ weight, reps, done }] }] }`. `planId` is the planned exercise when it was swapped during the workout (`null` for one added on the fly).
-- **Publishing a program for Andrea:** commit `programs/<id>.json` to `gym-app-data`. The app pulls it on the next sync (on open or foreground) and shows it on the home screen. To revise one, edit the same file and keep its `id`.
-- **Reading progress:** read `sessions/**` (weights, reps, notes) before writing the next program.
+- **Publishing a program for Andrea:** commit `programs/<id>.json` to `gym-app-data`. The app pulls it on the next sync (on open or foreground) and shows it on the home screen. The full procedure is in "Writing a new program for Andrea".
 - Conflict rule: a file already known locally takes the remote version unless it was edited on the phone (`_dirty`). In that case the phone's version wins. Local deletions delete the remote file.
 - The app accepts only private repos. It uses a fine-grained PAT scoped to `gym-app-data` with *Contents: Read and write*, stored on the device only.
 
