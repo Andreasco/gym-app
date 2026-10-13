@@ -4,6 +4,7 @@
 const IMG_BASE = 'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/';
 const STORE_KEY = 'gymapp.v1';
 const SCHEMA_VERSION = 1;
+const APP_VERSION = '2026-10-13.3';
 
 const IT = {
   muscles: {
@@ -608,6 +609,7 @@ function renderSettings() {
       </div>`).join('') || '<p class="muted">Nessuna scheda.</p>'}
 
     <h2>Info</h2>
+    <p class="muted small">Versione app: ${APP_VERSION}</p>
     <p class="muted small">Esercizi: <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">free-exercise-db</a> (public domain), ${exercises.length} esercizi.</p>
     <details><summary>Cancella tutti i dati</summary>
       <button class="btn danger block" id="wipe">Cancella tutto</button>
@@ -690,7 +692,28 @@ async function boot() {
   window.addEventListener('hashchange', route);
   route();
   navigator.storage?.persist?.();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  registerServiceWorker();
+}
+
+// iOS keeps a home-screen PWA suspended in memory, so "reopening" it does not reload the page.
+// Check for a new version whenever the app comes back to the foreground and reload once it is installed.
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+    // The first install (no previous controller) needs no reload; any later replacement does.
+    let hadController = !!navigator.serviceWorker.controller;
+    let reloading = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; }
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+  } catch { /* offline or unsupported */ }
 }
 
 boot();

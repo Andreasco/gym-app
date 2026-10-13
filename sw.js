@@ -1,5 +1,5 @@
 // Offline support: app shell is precached, exercise images are cached on first view.
-const VERSION = 'v3';
+const VERSION = 'v4';
 const SHELL = `gym-shell-${VERSION}`;
 const IMAGES = 'gym-images';
 const SHELL_FILES = [
@@ -9,7 +9,7 @@ const SHELL_FILES = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {
@@ -37,9 +37,10 @@ self.addEventListener('fetch', e => {
   }
 
   // App shell: network-first so updates land, cache as offline fallback.
+  // cache: 'no-cache' revalidates with the server, bypassing GitHub Pages' 10-minute HTTP cache.
   if (url.origin === self.location.origin) {
     e.respondWith(
-      fetch(e.request)
+      fetch(e.request, { cache: 'no-cache' })
         .then(res => {
           if (res.ok) caches.open(SHELL).then(c => c.put(e.request, res.clone()));
           return res;
