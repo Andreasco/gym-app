@@ -44,7 +44,7 @@ body {
 @media (display-mode: standalone) {
   html, body { height: 100vh; }
   /* iOS blurs content right under the status bar: start the header lower. */
-  :root { --safe-top: calc(env(safe-area-inset-top, 0px) + 52px); }
+  :root { --safe-top: calc(env(safe-area-inset-top, 0px) + 44px); }
 }
 a { color: var(--accent); text-decoration: none; }
 a, button, label, input, select, textarea { touch-action: manipulation; }
