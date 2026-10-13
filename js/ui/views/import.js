@@ -8,13 +8,14 @@ const errorBox = html => `<div class="notes error" role="alert">${html}</div>`;
 export function renderImport() {
   setChrome('Importa scheda', { back: true, tab: 'home' });
   view.innerHTML = `
-    <label class="field"><span>JSON della scheda generata da Claude</span>
+    <label class="field"><span>JSON della scheda</span>
       <textarea id="json" placeholder='{ "name": "...", "days": [ ... ] }' autocapitalize="off" autocorrect="off" spellcheck="false"></textarea>
     </label>
     <div class="btn-row">
       <button class="btn secondary" id="paste">${icon('copy')}Incolla</button>
       <label class="btn secondary">File…<input id="file" type="file" accept="application/json,.json" hidden></label>
     </div>
+    <p class="muted small">Non hai una scheda? Il <a href="https://github.com/Andreasco/gym-app#program-schema-v1" target="_blank" rel="noopener">formato è documentato</a>: puoi fartela scrivere da un assistente AI o da chi usa già l'app, con Esporta JSON.</p>
     <div id="result"></div>
     <div class="btn-row"><button class="btn block" id="go">Importa e attiva</button></div>
   `;

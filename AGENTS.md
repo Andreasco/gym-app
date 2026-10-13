@@ -8,6 +8,7 @@ Guide for AI agents (Claude Code and others) working on this repository.
 
 - **Live:** https://andreasco.github.io/gym-app/ (GitHub Pages, branch `main`, root `/`). Every push to `main` deploys automatically in about a minute.
 - **Code repo:** `Andreasco/gym-app` (public, required for free GitHub Pages; it contains no personal data).
+- **Other users:** anyone with the link can install the app and use it on their own, with their own data and, if they want sync, their own private repo. Keep the app free of Andrea-specific defaults: no preset repository, no bundled program.
 - **Data repo:** `Andreasco/gym-app-data` (private): the user's programs, workout history and training profile. The app syncs the first two.
 
 ## Working agreements (Andrea's preferences)

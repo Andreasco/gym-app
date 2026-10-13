@@ -79,7 +79,7 @@ A visual redesign only touches `styles.css`, `index.html` and `js/ui/`; `js/core
 
 ## GitHub sync
 
-*Dati → Sincronizzazione GitHub* links a private data repository (default `Andreasco/gym-app-data`) using a
+*Dati → Sincronizzazione GitHub* links a private data repository using a
 fine-grained personal access token scoped to that single repository with **Contents: Read and write** only.
 The token is stored in `localStorage` on the device and sent only to `api.github.com` (enforced by the page CSP).
 

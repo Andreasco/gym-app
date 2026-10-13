@@ -49,8 +49,11 @@ export function renderHome() {
           ${st.sessions ? `${plural(st.sessions, 'allenamento', 'allenamenti')} · ultimo ${fmtDate(st.last.startedAt)}` : 'Mai iniziata'}
         </p>
       </a>`;
-    }).join('')}` : emptyState('dumbbell', 'Nessuna scheda', 'Chiedi a Claude una scheda in JSON e importala.')}
-    <div class="btn-row"><a class="btn secondary" href="#/import">${icon('plus')}Importa scheda</a></div>
+    }).join('')}` : emptyState('dumbbell', 'Nessuna scheda', 'Importa una scheda in formato JSON, oppure collega la sincronizzazione se hai già i tuoi dati su GitHub.')}
+    <div class="btn-row">
+      <a class="btn ${list.length ? 'secondary' : ''}" href="#/import">${icon('plus')}Importa scheda</a>
+      ${list.length ? '' : `<a class="btn secondary" href="#/settings">${icon('refresh')}Sincronizza</a>`}
+    </div>
   `;
   $('#start-next')?.addEventListener('click', () => {
     const p = getProgram(activeProgramId);

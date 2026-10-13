@@ -7,8 +7,6 @@ import {
 } from '../../core/store.js';
 import { syncStatus, isSyncConfigured, syncTarget, runSync, connectSync, disconnectSync } from '../../core/sync-service.js';
 
-const DEFAULT_DATA_REPO = 'Andreasco/gym-app-data';
-
 // Updates the sync status line if the settings view is on screen.
 export function renderSyncStatus() {
   const el = $('#sync-status');
@@ -33,9 +31,17 @@ function syncSection() {
       <button class="btn danger" id="sync-off">Disconnetti</button>
     </div>
   ` : `
-    <p class="muted">Collega una repository GitHub <b>privata</b> per avere backup automatico e schede pubblicate da Claude. Serve un token fine-grained con accesso solo a quella repository (Contents: Read and write).</p>
+    <p class="muted">Collega un repository GitHub <b>privato</b> per avere il backup automatico e ritrovare i dati su un altro telefono.</p>
+    <details>
+      <summary>Come si prepara</summary>
+      <ol class="list-plain muted">
+        <li>Su GitHub crea un repository <b>privato</b>, anche vuoto.</li>
+        <li>In Settings → Developer settings → Fine-grained tokens crea un token con accesso solo a quel repository e permesso <b>Contents: Read and write</b>.</li>
+        <li>Scrivi qui sotto il repository come <code>utente/nome</code> e incolla il token.</li>
+      </ol>
+    </details>
     <label class="field"><span>Repository</span>
-      <input id="gh-repo" placeholder="owner/repo" value="${DEFAULT_DATA_REPO}" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
+      <input id="gh-repo" placeholder="utente/nome-repository" autocapitalize="off" autocorrect="off" spellcheck="false"></label>
     <label class="field"><span>Token</span>
       <input id="gh-token" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
     <div class="btn-row" style="margin-bottom:0"><button class="btn" id="sync-connect">Collega</button></div>
@@ -56,7 +62,7 @@ function bindSync() {
   $('#sync-connect').onclick = async () => {
     const [owner, repo] = $('#gh-repo').value.trim().split('/');
     const token = $('#gh-token').value.trim();
-    if (!owner || !repo || !token) return toast('Inserisci repository e token');
+    if (!owner || !repo || !token) return toast('Inserisci il repository come utente/nome e il token');
     const btn = $('#sync-connect');
     btn.disabled = true;
     btn.textContent = 'Verifica…';

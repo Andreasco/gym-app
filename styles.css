@@ -142,7 +142,7 @@ a.card:active, button.card:active { background: var(--surface-2); transform: sca
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 50px; padding: 0 18px; border: 0; border-radius: 14px;
-  font: inherit; font-weight: 600; color: var(--on-accent); background: var(--accent);
+  font: inherit; font-weight: 600; white-space: nowrap; color: var(--on-accent); background: var(--accent);
   -webkit-user-select: none; user-select: none;
   transition: opacity .12s, transform .12s;
 }
