@@ -49,7 +49,7 @@ export function renderHome() {
           ${st.sessions ? `${plural(st.sessions, 'allenamento', 'allenamenti')} · ultimo ${fmtDate(st.last.startedAt)}` : 'Mai iniziata'}
         </p>
       </a>`;
-    }).join('')}` : emptyState('dumbbell', 'Nessuna scheda', 'Importa una scheda in formato JSON, oppure collega la sincronizzazione se hai già i tuoi dati su GitHub.')}
+    }).join('')}` : emptyState('dumbbell', 'Nessuna scheda', 'Fattela scrivere da Claude e importala: le istruzioni sono in Importa scheda. Se hai già i tuoi dati su GitHub, collega la sincronizzazione.')}
     <div class="btn-row">
       <a class="btn ${list.length ? 'secondary' : ''}" href="#/import">${icon('plus')}Importa scheda</a>
       ${list.length ? '' : `<a class="btn secondary" href="#/settings">${icon('refresh')}Sincronizza</a>`}
