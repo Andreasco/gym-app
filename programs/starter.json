@@ -2,6 +2,9 @@
   "schemaVersion": 1,
   "id": "starter-upper-lower",
   "name": "Upper / Lower – Base",
+  "goal": "Ipertrofia",
+  "level": "intermediate",
+  "weeks": 8,
   "description": "Scheda di esempio, 4 giorni a settimana (Upper A, Lower A, Upper B, Lower B). Sostituiscila con quella che ti prepara Claude.",
   "days": [
     {

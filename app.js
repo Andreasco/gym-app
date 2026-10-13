@@ -205,53 +205,127 @@ function exerciseRow(x, { link = true } = {}) {
   return link && ex ? `<a class="card" href="#/exercise/${encodeURIComponent(x.exerciseId)}">${inner}</a>` : `<div class="card">${inner}</div>`;
 }
 
+// Derived metadata shown on program/day cards.
+const estMinutes = d => Math.round(d.exercises.reduce((t, x) => t + (Number(x.sets) || 0) * ((Number(x.restSec) || 90) + 45), 0) / 60);
+const programSessions = pid => state.sessions.filter(s => s.programId === pid && s.finishedAt)
+  .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+function programStats(p) {
+  const done = programSessions(p.id);
+  const last = done[0];
+  const lastIdx = last ? p.days.findIndex(d => d.id === last.dayId) : -1;
+  const muscles = new Set(p.days.flatMap(d => d.exercises.flatMap(x => exById.get(x.exerciseId)?.primaryMuscles || [])));
+  return {
+    days: p.days.length,
+    exercises: p.days.reduce((n, d) => n + d.exercises.length, 0),
+    weeklySets: p.days.reduce((n, d) => n + d.exercises.reduce((m, x) => m + (Number(x.sets) || 0), 0), 0),
+    sessions: done.length,
+    last,
+    next: p.days[(lastIdx + 1) % p.days.length],
+    muscles: muscles.size,
+  };
+}
+const lastDone = (pid, did) => programSessions(pid).find(s => s.dayId === did);
+
+function runningCard() {
+  const running = session(state.activeSessionId);
+  return running ? `
+    <a class="card" href="#/workout/${running.id}" style="border-color:var(--ok)">
+      <div class="row"><div class="grow"><h3>Allenamento in corso</h3>
+      <p class="muted">${esc(program(running.programId)?.name || running.programName || '')} · ${esc(running.dayName)}</p></div>
+      <span class="badge" style="background:var(--ok)">Riprendi</span></div>
+    </a>` : '';
+}
+
+function programMeta(p) {
+  return [
+    p.goal && `🎯 ${esc(p.goal)}`,
+    p.level && `📶 ${esc(tr('level', p.level))}`,
+    p.weeks && `🗓 ${esc(p.weeks)} sett.`,
+  ].filter(Boolean);
+}
+
 function renderHome() {
   setChrome('Schede', { tab: 'home' });
-  const active = program(state.activeProgramId);
-  const running = session(state.activeSessionId);
-  const others = state.programs.filter(p => p.id !== state.activeProgramId);
+  const list = [...state.programs].sort((a, b) =>
+    (b.id === state.activeProgramId) - (a.id === state.activeProgramId) || b.importedAt.localeCompare(a.importedAt));
 
   view.innerHTML = `
-    ${running ? `
-      <a class="card" href="#/workout/${running.id}" style="border-color:var(--ok)">
-        <div class="row"><div class="grow"><h3>Allenamento in corso</h3>
-        <p class="muted">${esc(program(running.programId)?.name || '')} · ${esc(running.dayName)}</p></div>
-        <span class="badge" style="background:var(--ok)">Riprendi</span></div>
-      </a>` : ''}
-
-    ${active ? `
-      <h2>${esc(active.name)}</h2>
-      ${active.description ? `<p class="muted">${esc(active.description)}</p>` : ''}
-      ${active.days.map(d => `
-        <a class="card" href="#/program/${active.id}/${d.id}">
-          <div class="row"><div class="grow">
-            <h3>${esc(d.name)}</h3>
-            <p class="muted ellipsis">${d.exercises.map(x => esc(exName(x.exerciseId))).join(' · ')}</p>
-          </div><span class="muted">›</span></div>
-        </a>`).join('')}
-    ` : `
+    ${runningCard()}
+    ${list.length ? list.map(p => {
+      const st = programStats(p);
+      const meta = programMeta(p);
+      return `
+      <a class="card" href="#/program/${encodeURIComponent(p.id)}" ${p.id === state.activeProgramId ? 'style="border-color:var(--accent)"' : ''}>
+        <div class="row">
+          <div class="grow">
+            <h3>${esc(p.name)} ${p.id === state.activeProgramId ? '<span class="badge">Attiva</span>' : ''}</h3>
+            ${p.description ? `<p class="muted small" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(p.description)}</p>` : ''}
+          </div>
+          <span class="muted">›</span>
+        </div>
+        <div class="chips">
+          ${meta.map(m => `<span class="chip">${m}</span>`).join('')}
+          <span class="chip">${st.days} giorni</span>
+          <span class="chip">${st.exercises} esercizi</span>
+          <span class="chip">${st.weeklySets} serie/sett.</span>
+        </div>
+        <p class="muted small" style="margin-top:8px">
+          ${st.sessions ? `${st.sessions === 1 ? "1 allenamento" : st.sessions + " allenamenti"} · ultimo ${fmtDate(st.last.startedAt)} · prossimo <b style="color:var(--text)">${esc(st.next.name)}</b>` : 'Mai iniziata'}
+          · importata ${fmtDate(p.importedAt)}
+        </p>
+      </a>`;
+    }).join('') : `
       <div class="empty">
         <p style="font-size:40px;margin:0">🏋️</p>
-        <p>Nessuna scheda attiva.</p>
+        <p>Nessuna scheda.</p>
         <p class="small">Chiedi a Claude una scheda in JSON e importala.</p>
       </div>`}
-
-    <div class="btn-row">
-      <a class="btn" href="#/import">Importa scheda</a>
-    </div>
-
-    ${others.length ? `<h2>Altre schede</h2>${others.map(p => `
-      <div class="card row">
-        <div class="grow"><h3 class="ellipsis">${esc(p.name)}</h3>
-        <p class="muted">${p.days.length} giorni · importata ${fmtDate(p.importedAt)}</p></div>
-        <button class="btn secondary" data-activate="${p.id}">Attiva</button>
-      </div>`).join('')}` : ''}
+    <div class="btn-row"><a class="btn" href="#/import">Importa scheda</a></div>
   `;
-  view.querySelectorAll('[data-activate]').forEach(b => b.onclick = () => {
-    state.activeProgramId = b.dataset.activate;
+}
+
+function renderProgram(pid) {
+  const p = program(pid);
+  if (!p) return notFound();
+  setChrome(p.name, { back: true, tab: 'home' });
+  const st = programStats(p);
+  const meta = programMeta(p);
+  const isActive = p.id === state.activeProgramId;
+  view.innerHTML = `
+    ${runningCard()}
+    ${p.description ? `<p class="muted">${esc(p.description)}</p>` : ''}
+    <div class="chips">
+      ${meta.map(m => `<span class="chip">${m}</span>`).join('')}
+      <span class="chip">${st.days} giorni</span>
+      <span class="chip">${st.weeklySets} serie/sett.</span>
+      <span class="chip">${st.muscles} gruppi muscolari</span>
+      <span class="chip">${st.sessions === 1 ? "1 allenamento" : st.sessions + " allenamenti"}</span>
+    </div>
+    <h2>Giorni</h2>
+    ${p.days.map((d, i) => {
+      const last = lastDone(p.id, d.id);
+      const isNext = st.sessions && st.next.id === d.id;
+      return `
+      <a class="card" href="#/program/${encodeURIComponent(p.id)}/${encodeURIComponent(d.id)}" ${isNext ? 'style="border-color:var(--ok)"' : ''}>
+        <div class="row"><div class="grow">
+          <h3>${i + 1}. ${esc(d.name)} ${isNext ? '<span class="badge" style="background:var(--ok)">Prossimo</span>' : ''}</h3>
+          <p class="muted small">${d.exercises.length} esercizi · ~${estMinutes(d)} min${last ? ` · ultimo ${fmtDate(last.startedAt)}` : ''}</p>
+          <p class="muted ellipsis small">${d.exercises.map(x => esc(exName(x.exerciseId))).join(' · ')}</p>
+        </div><span class="muted">›</span></div>
+      </a>`;
+    }).join('')}
+    <div class="btn-row">
+      ${isActive ? '' : '<button class="btn secondary" id="activate">Imposta come attiva</button>'}
+      <button class="btn secondary" id="export">Esporta JSON</button>
+    </div>
+  `;
+  $('#activate')?.addEventListener('click', () => {
+    state.activeProgramId = p.id;
     save();
-    renderHome();
+    toast('Scheda attiva');
+    renderProgram(pid);
   });
+  $('#export').onclick = () => shareOrDownload(`${p.name.replace(/\W+/g, '-').toLowerCase()}.json`, p);
 }
 
 function renderDay(pid, did) {
@@ -260,6 +334,7 @@ function renderDay(pid, did) {
   if (!d) return notFound();
   setChrome(d.name, { back: true, tab: 'home' });
   view.innerHTML = `
+    <p class="muted"><a href="#/program/${encodeURIComponent(p.id)}">${esc(p.name)}</a> · ${d.exercises.length} esercizi · ~${estMinutes(d)} min</p>
     ${d.notes ? `<div class="notes">${esc(d.notes)}</div>` : ''}
     ${d.exercises.map(x => exerciseRow(x)).join('')}
     <div class="btn-row"><button class="btn ok block" id="start">Inizia allenamento</button></div>
@@ -586,7 +661,7 @@ function route() {
   view.scrollTop = 0;
   switch (parts[0]) {
     case '': return renderHome();
-    case 'program': return renderDay(parts[1], parts[2]);
+    case 'program': return parts[2] ? renderDay(parts[1], parts[2]) : renderProgram(parts[1]);
     case 'workout': return renderWorkout(parts[1]);
     case 'history': return renderHistory();
     case 'library': return renderLibrary();

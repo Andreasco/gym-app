@@ -14,6 +14,9 @@ Static web app for gym workout plans. No backend, no build step: it runs on GitH
   "id": "optional-stable-id",
   "name": "Upper / Lower – Block 1",
   "description": "optional",
+  "goal": "optional, e.g. Ipertrofia",
+  "level": "beginner | intermediate | expert (optional)",
+  "weeks": 8,
   "days": [
     {
       "id": "upper-a",
@@ -37,7 +40,8 @@ Static web app for gym workout plans. No backend, no build step: it runs on GitH
 
 | Field | Required | Notes |
 |---|---|---|
-| `name`, `days[].name` | yes | |
+| `name`, `days[].name` | yes | A program (scheda) is split into days (giorni) |
+| `goal`, `level`, `weeks` | no | Shown as metadata on the home list |
 | `days[].exercises[].exerciseId` | yes | Must be an `id` from `data/exercises.json` |
 | `sets` | yes | Integer > 0 |
 | `reps` | no | String: `"8"`, `"6-8"`, `"45s"` |
