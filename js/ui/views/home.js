@@ -1,6 +1,6 @@
 import { $, esc, fmtDate, plural, icon } from '../dom.js';
 import { view, setChrome } from '../shell.js';
-import { runningCard, programMetaChips, emptyState, startWorkout } from '../components.js';
+import { runningCard, programMetaChips, emptyState, startWorkout, blockLabel } from '../components.js';
 import { getState, getProgram, getActiveSession } from '../../core/store.js';
 import { programStats, sortedPrograms, estMinutes } from '../../core/queries.js';
 
@@ -10,11 +10,12 @@ function nextWorkoutCard(p) {
   if (!st?.next || getActiveSession()) return '';
   return `
     <section class="card hero-card">
-      <p class="eyebrow">Prossimo allenamento</p>
+      <p class="eyebrow">Prossimo allenamento · ${blockLabel(p, st)}</p>
       <a class="row" href="#/program/${encodeURIComponent(p.id)}/${encodeURIComponent(st.next.id)}">
         <h2 class="grow ellipsis">${esc(st.next.name)}</h2>${icon('chevron-right', 'muted')}
       </a>
       <p class="muted">${esc(p.name)} · ${plural(st.next.exercises.length, 'esercizio', 'esercizi')} · ~${estMinutes(st.next)} min</p>
+      ${st.blockDone ? `<p class="notes">Hai completato questo blocco: chiedi a Claude la prossima scheda.</p>` : ''}
       <button class="btn block" id="start-next">${icon('play')}Inizia allenamento</button>
     </section>`;
 }

@@ -57,6 +57,9 @@ export function programMetaChips(p) {
   ].filter(Boolean).map(m => `<span class="chip">${m}</span>`).join('');
 }
 
+// Position in the block for a program and its programStats().
+export const blockLabel = (p, st) => (st.blockDone ? 'Blocco completato' : `Settimana ${st.week}${p.weeks ? ` di ${esc(p.weeks)}` : ''}`);
+
 // Row of summary tiles from [value, label] pairs.
 export const statTiles = items =>
   `<div class="stats">${items.map(([value, label]) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`).join('')}</div>`;

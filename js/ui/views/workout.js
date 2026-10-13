@@ -6,8 +6,20 @@ import {
   getSession, getProgram, updateSet, toggleSet, addSet, setEntryNote, swapEntryExercise, addEntry,
   finishSession, countDoneSets, discardSession, deleteSession, requestSync,
 } from '../../core/store.js';
-import { lastPerformance, lastNote, planFor, sessionSummary } from '../../core/queries.js';
+import { lastPerformance, lastNote, planFor, sessionSummary, progressionHint } from '../../core/queries.js';
 import { getExercise, exerciseName, plannedName, imageUrl } from '../../core/exercises.js';
+
+const kg = n => `${String(n).replace('.', ',')} kg`;
+
+// One line telling whether to add load or repeat it, from the last time the exercise was done.
+function hintLine(plan, last) {
+  const h = progressionHint(plan, last);
+  if (!h) return '';
+  const text = h.up
+    ? (h.weight ? `Sali a ${kg(h.next)}: l'ultima volta hai chiuso tutte le serie a ${h.top}.` : `Hai chiuso tutte le serie a ${h.top}: aggiungi zavorra.`)
+    : (h.weight ? `Ripeti ${kg(h.weight)} e punta a ${h.top} ripetizioni per serie.` : `Punta a ${h.top} ripetizioni per serie.`);
+  return `<p class="hint ${h.up ? 'up' : ''}">${icon(h.up ? 'arrow-up' : 'refresh')}<span>${text}</span></p>`;
+}
 
 function entryCard(s, e, ei, readOnly) {
   const x = planFor(s, e);
@@ -28,6 +40,7 @@ function entryCard(s, e, ei, readOnly) {
         ${icon('chevron-right', 'muted')}
       </a>
       ${x.notes ? `<div class="notes">${esc(x.notes)}</div>` : ''}
+      ${readOnly ? '' : hintLine(x, last)}
       <div class="sets" ${e.sets.length ? '' : 'hidden'}>
         <div class="set-head" aria-hidden="true"><span>#</span><span>Prec.</span><span>kg</span><span>Reps</span><span></span></div>
         ${e.sets.map((st, si) => `

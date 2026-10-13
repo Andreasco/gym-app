@@ -203,6 +203,9 @@ a.card:active, button.card:active { background: var(--surface-2); transform: sca
 .target .icon { width: 15px; height: 15px; }
 .notes { margin: 10px 0 0; padding: 10px 12px; background: var(--warn-soft); border-radius: var(--radius-sm); font-size: 14px; }
 .notes.error { background: var(--danger-soft); }
+.hint { display: flex; align-items: flex-start; gap: 6px; margin: 10px 0 0; font-size: 14px; color: var(--muted); }
+.hint .icon { width: 16px; height: 16px; margin-top: 2px; }
+.hint.up { color: var(--accent); }
 .notes ul { margin: 6px 0 0; }
 
 .empty { text-align: center; padding: 56px 16px; color: var(--muted); }

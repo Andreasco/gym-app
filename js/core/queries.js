@@ -42,6 +42,18 @@ export function bestSet(exerciseId, excludeSessionId) {
   return best;
 }
 
+// What to do today, from the last time the exercise was done (double progression):
+// every planned set at the top of the rep range means more load, otherwise the same load again.
+// Returns null without history or when reps are not a number or a range (e.g. "45s").
+export function progressionHint(plan, last) {
+  const range = /^\s*(\d+)(?:\s*-\s*(\d+))?\s*$/.exec(plan.reps ?? '');
+  if (!range || !last?.sets.length) return null;
+  const top = Number(range[2] ?? range[1]);
+  const weight = Math.max(...last.sets.map(st => Number(st.weight) || 0));
+  const up = last.sets.length >= (Number(plan.sets) || 1) && last.sets.every(st => Number(st.reps) >= top);
+  return { up, top, weight, next: up && weight ? weight + (weight < 20 ? 1 : 2.5) : weight };
+}
+
 // Last 10 workouts that include an exercise (sets and note).
 export const exerciseHistory = exerciseId => finishedSessions()
   .flatMap(s => s.entries.filter(x => x.exerciseId === exerciseId && (x.sets.length || x.note))
@@ -66,6 +78,8 @@ export function programStats(p) {
   const last = done[0];
   const lastIdx = last ? p.days.findIndex(d => d.id === last.dayId) : -1;
   const muscles = new Set(p.days.flatMap(d => d.exercises.flatMap(x => getExercise(x.exerciseId)?.primaryMuscles || [])));
+  // A "week" of the block is one completed round of all the program's days.
+  const rounds = p.days.length ? Math.min(...p.days.map(d => done.filter(s => s.dayId === d.id).length)) : 0;
   return {
     days: p.days.length,
     exercises: p.days.reduce((n, d) => n + d.exercises.length, 0),
@@ -74,6 +88,8 @@ export function programStats(p) {
     last,
     next: p.days[(lastIdx + 1) % p.days.length],
     muscles: muscles.size,
+    week: rounds + 1,
+    blockDone: Number(p.weeks) > 0 && rounds >= Number(p.weeks),
   };
 }
 

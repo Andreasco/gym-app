@@ -1,6 +1,6 @@
 import { $, esc, fmtDate, plural, toast, shareOrDownload, fileSlug, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
-import { runningCard, programMetaChips, statTiles } from '../components.js';
+import { runningCard, programMetaChips, statTiles, blockLabel } from '../components.js';
 import { getState, getProgram, setActiveProgram, duplicateProgram } from '../../core/store.js';
 import { programStats, estMinutes, lastSessionOfDay } from '../../core/queries.js';
 import { plannedName } from '../../core/exercises.js';
@@ -11,11 +11,13 @@ export function renderProgram(pid) {
   setChrome(p.name, { back: true, tab: 'home' });
   const st = programStats(p);
   const isActive = p.id === getState().activeProgramId;
-  const meta = programMetaChips(p);
+  const chips = (isActive ? '<span class="chip accent">Attiva</span>' : '')
+    + (st.sessions ? `<span class="chip accent">${blockLabel(p, st)}</span>` : '')
+    + programMetaChips(p);
   view.innerHTML = `
     ${runningCard()}
     ${p.description ? `<p class="muted">${esc(p.description)}</p>` : ''}
-    ${meta || isActive ? `<div class="chips">${isActive ? '<span class="chip accent">Attiva</span>' : ''}${meta}</div>` : ''}
+    ${chips ? `<div class="chips">${chips}</div>` : ''}
     ${statTiles([[st.days, 'giorni'], [st.weeklySets, 'serie/sett.'], [st.muscles, 'muscoli'], [st.sessions, 'allenamenti']])}
     <h2>Giorni</h2>
     ${p.days.map((d, i) => {
