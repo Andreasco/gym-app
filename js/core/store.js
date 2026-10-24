@@ -67,6 +67,7 @@ export function importProgram(p, { activate = true, sync = true } = {}) {
   const copy = structuredClone(p);
   copy.id = copy.id && !getProgram(copy.id) ? copy.id : uid();
   copy.importedAt = now();
+  delete copy.archived;
   copy.days.forEach((d, i) => { d.id ||= `d${i + 1}`; });
   state.programs.push(copy);
   if (activate) state.activeProgramId = copy.id;
@@ -80,7 +81,7 @@ export function setActiveProgram(id) {
 }
 
 export function duplicateProgram(id) {
-  const { _path, _sha, _dirty, ...rest } = structuredClone(getProgram(id));
+  const { _path, _sha, _dirty, archived, ...rest } = structuredClone(getProgram(id));
   const copy = { ...rest, id: uid(), name: `${rest.name} (copia)`, importedAt: now() };
   state.programs.push(copy);
   commit({ sync: true });
@@ -95,11 +96,25 @@ export function updateProgram(id, data) {
   commit({ sync: true });
 }
 
-export function deleteProgram(id) {
+export function setArchived(id, archived) {
+  const p = getProgram(id);
+  if (archived) p.archived = true;
+  else delete p.archived;
+  markDirty(p);
+  commit({ sync: true });
+}
+
+// Removes a program; with `withSessions` also every workout done with it.
+export function deleteProgram(id, { withSessions = false } = {}) {
   const p = getProgram(id);
   state.programs = state.programs.filter(x => x.id !== id);
   queueDelete(state, p);
-  if (state.activeProgramId === id) state.activeProgramId = state.programs[0]?.id ?? null;
+  if (withSessions) {
+    state.sessions.filter(s => s.programId === id).forEach(s => queueDelete(state, s));
+    state.sessions = state.sessions.filter(s => s.programId !== id);
+    if (!getSession(state.activeSessionId)) state.activeSessionId = null;
+  }
+  if (state.activeProgramId === id) state.activeProgramId = state.programs.find(x => !x.archived)?.id ?? null;
   commit({ sync: true });
 }
 

@@ -1,8 +1,8 @@
 import { $, esc, fmtDate, plural, toast, shareOrDownload, fileSlug, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
 import { runningCard, programMetaChips, statTiles, blockLabel } from '../components.js';
-import { getState, getProgram, setActiveProgram, duplicateProgram } from '../../core/store.js';
-import { programStats, estMinutes, lastSessionOfDay } from '../../core/queries.js';
+import { getState, getProgram, setActiveProgram, duplicateProgram, setArchived, deleteProgram } from '../../core/store.js';
+import { programStats, estMinutes, lastSessionOfDay, programSessions } from '../../core/queries.js';
 import { plannedName } from '../../core/exercises.js';
 
 export function renderProgram(pid) {
@@ -12,6 +12,7 @@ export function renderProgram(pid) {
   const st = programStats(p);
   const isActive = p.id === getState().activeProgramId;
   const chips = (isActive ? '<span class="chip accent">Attiva</span>' : '')
+    + (p.archived ? '<span class="chip">Archiviata</span>' : '')
     + (st.sessions ? `<span class="chip accent">${blockLabel(p, st)}</span>` : '')
     + programMetaChips(p);
   view.innerHTML = `
@@ -36,13 +37,31 @@ export function renderProgram(pid) {
     <h2>Scheda</h2>
     <div class="btn-row">
       <a class="btn secondary" href="#/edit/${encodeURIComponent(p.id)}">${icon('pencil')}Modifica scheda</a>
-      ${isActive ? '' : `<button class="btn" id="activate">${icon('check')}Imposta come attiva</button>`}
+      ${isActive || p.archived ? '' : `<button class="btn" id="activate">${icon('check')}Imposta come attiva</button>`}
     </div>
     <div class="btn-row">
       <button class="btn secondary" id="duplicate">${icon('copy')}Duplica</button>
       <button class="btn secondary" id="export">${icon('share')}Esporta JSON</button>
     </div>
+    <div class="btn-row">
+      ${p.archived ? `<button class="btn secondary" id="archive">${icon('refresh')}Ripristina</button>`
+      : isActive ? '' : `<button class="btn secondary" id="archive">${icon('archive')}Archivia</button>`}
+      <button class="btn danger" id="delete">${icon('trash')}Elimina</button>
+    </div>
   `;
+  $('#archive')?.addEventListener('click', () => {
+    setArchived(p.id, !p.archived);
+    toast(p.archived ? 'Scheda archiviata' : 'Scheda ripristinata');
+    renderProgram(pid);
+  });
+  $('#delete').onclick = () => {
+    if (!confirm(`Eliminare la scheda "${p.name}"?`)) return;
+    const done = programSessions(p.id).length;
+    const withSessions = done > 0 && confirm(`Eliminare anche lo storico (${plural(done, 'allenamento', 'allenamenti')}) di questa scheda?\n\nAnnulla per tenerli nello storico.`);
+    deleteProgram(p.id, { withSessions });
+    toast('Scheda eliminata');
+    location.hash = '#/';
+  };
   $('#duplicate').onclick = () => {
     const copy = duplicateProgram(p.id);
     toast('Scheda duplicata');

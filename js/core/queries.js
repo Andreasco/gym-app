@@ -70,7 +70,7 @@ export function planFor(session, entry) {
 export const estMinutes = day =>
   Math.round(day.exercises.reduce((t, x) => t + (Number(x.sets) || 0) * ((Number(x.restSec) || DEFAULT_REST_SEC) + 45), 0) / 60);
 
-const programSessions = pid => finishedSessions().filter(s => s.programId === pid);
+export const programSessions = pid => finishedSessions().filter(s => s.programId === pid);
 export const lastSessionOfDay = (pid, did) => programSessions(pid).find(s => s.dayId === did);
 
 export function programStats(p) {

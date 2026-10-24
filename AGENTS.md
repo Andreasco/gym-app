@@ -8,7 +8,7 @@ Guide for AI agents (Claude Code and others) working on this repository.
 
 - **Live:** https://andreasco.github.io/gym-app/ (GitHub Pages, branch `main`, root `/`). Every push to `main` deploys automatically in about a minute.
 - **Code repo:** `Andreasco/gym-app` (public, required for free GitHub Pages; it contains no personal data).
-- **Other users:** anyone with the link can install the app and use it on their own, with their own data and, if they want sync, their own private repo. Keep the app free of Andrea-specific defaults: no preset repository, no bundled program. They get their program from their own AI assistant: the import screen copies a ready-made prompt (`assistantPrompt` in `js/ui/views/import.js`) with the format, the rules and the catalog ids. Update that prompt whenever the schema or the behaviour it describes changes.
+- **Other users:** anyone with the link can install the app and use it on their own, with their own data and, if they want sync, their own private repo. Keep the app free of Andrea-specific defaults: no preset repository, no bundled program. They get their program from their own AI assistant: the import screen copies a ready-made prompt (`assistantPrompt` in `js/ui/views/import.js`) with the format, the rules and the catalog ids, or a follow-up version (`followUpPrompt`) that adds the chosen programs and a summary of the workouts done with them. Update that prompt whenever the schema or the behaviour it describes changes.
 - **Data repo:** `Andreasco/gym-app-data` (private): the user's programs, workout history and training profile. The app syncs the first two.
 
 ## Working agreements (Andrea's preferences)
@@ -111,7 +111,7 @@ Andrea's training profile (goal, schedule, equipment, injuries, exercises to avo
 ### Conventions
 
 - A block lasts 4 weeks: `"weeks": 4`.
-- A new block is a new file with a new `id`, `<split>-<yyyy>-<mm>` (for example `full-body-2026-10`). Leave the previous block in place: past sessions point at it. To correct the current block, edit the same file and keep its `id` and the day ids.
+- A new block is a new file with a new `id`, `<split>-<yyyy>-<mm>` (for example `full-body-2026-10`). Leave the previous block in place: past sessions point at it. Archive it instead: add `"archived": true` to its file in the same push, and the app moves it to *Archiviate*. To correct the current block, edit the same file and keep its `id` and the day ids.
 - Everything shown in the app is Italian: program and day names, `description`, `notes`, and a `name` on every exercise (catalog names are English).
 - Intensity goes in `rpe`. His old sheets used RIR: RIR 2 is RPE 8.
 - Session length: the app estimates `sets × (restSec + 45 s)` per exercise. Keep that estimate about 10 minutes under the session length he asked for, to leave room for the warm-up.
