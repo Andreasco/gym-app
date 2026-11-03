@@ -21,10 +21,12 @@ function nextWorkoutCard(p) {
   if (!st?.next || getActiveSession()) return '';
   return `
     <section class="card hero-card">
-      <p class="eyebrow">Prossimo allenamento · ${blockLabel(p, st)}</p>
+      <p class="eyebrow">${blockLabel(p, st)}</p>
+      ${p.days.length > 1 ? `
+      <p class="day-label" id="day-label">Scegli il giorno</p>
+      <div class="day-picks" role="group" aria-labelledby="day-label">${p.days.map(d => dayChip(d, st)).join('')}</div>` : ''}
       <div id="next-day">${nextDayInfo(p, st.next)}</div>
       ${st.blockDone ? `<p class="notes">Hai completato questo blocco: <a href="#/import">chiedi a Claude la prossima scheda</a>.</p>` : ''}
-      ${p.days.length > 1 ? `<div class="chip-scroll" role="group" aria-label="Scegli il giorno">${p.days.map(d => dayChip(d, st)).join('')}</div>` : ''}
       <button class="btn block" id="start-next">${icon('play')}Inizia allenamento</button>
     </section>`;
 }
@@ -80,6 +82,5 @@ export function renderHome() {
     chips.forEach(c => c.setAttribute('aria-pressed', c === chip));
     $('#next-day').innerHTML = nextDayInfo(active, active.days.find(d => d.id === dayId));
   }));
-  $('.hero-card [aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   start.addEventListener('click', () => startWorkout(active.id, dayId));
 }
