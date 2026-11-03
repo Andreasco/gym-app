@@ -127,7 +127,8 @@ Andrea's training profile (goal, schedule, equipment, injuries, exercises to avo
 ### What the app derives from the program
 
 - **Progression hint.** On each workout card the app compares the last time the exercise was done with `reps`. If every planned set reached the top of the range it suggests more load (+2.5 kg from 20 kg up, +1 kg below, added weight for bodyweight work); otherwise it suggests repeating the load. This needs `reps` as a number or a range (`"8"`, `"6-8"`); other formats such as `"45s"` show no hint. The hint knows nothing about deload weeks: mention that in `description` when the block has one.
-- **Week counter.** A "week" is one completed round of all the days, not a calendar week. When the rounds reach `weeks` the home screen shows "Blocco completato": that is the cue for the next block.
+- **Week counter.** A "week" is one completed round of all the days, in any order, not a calendar week. When the rounds reach `weeks` the home screen shows "Blocco completato": that is the cue for the next block.
+- **Day choice.** The home screen preselects the first day not yet done in the current week, marks the days already done, and lets the user pick any day. Do not rely on the order of `days` being the order they are trained in.
 
 ### Checking and publishing
 

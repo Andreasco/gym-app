@@ -4,6 +4,17 @@ import { runningCard, programMetaChips, emptyState, startWorkout, blockLabel } f
 import { getState, getProgram, getActiveSession } from '../../core/store.js';
 import { programStats, sortedPrograms, estMinutes } from '../../core/queries.js';
 
+const nextDayInfo = (p, day) => `
+  <a class="row" href="#/program/${encodeURIComponent(p.id)}/${encodeURIComponent(day.id)}">
+    <h2 class="grow ellipsis">${esc(day.name)}</h2>${icon('chevron-right', 'muted')}
+  </a>
+  <p class="muted">${esc(p.name)} · ${plural(day.exercises.length, 'esercizio', 'esercizi')} · ~${estMinutes(day)} min</p>`;
+
+function dayChip(day, st) {
+  const done = st.doneThisWeek.includes(day.id);
+  return `<button type="button" class="chip-btn" data-day="${esc(day.id)}" aria-pressed="${day === st.next}"${done ? ` aria-label="${esc(day.name)}, già fatto questa settimana"` : ''}>${done ? icon('check') : ''}${esc(day.name)}</button>`;
+}
+
 // Next workout of the active program, hidden while a workout is running.
 function nextWorkoutCard(p) {
   const st = p && programStats(p);
@@ -11,11 +22,9 @@ function nextWorkoutCard(p) {
   return `
     <section class="card hero-card">
       <p class="eyebrow">Prossimo allenamento · ${blockLabel(p, st)}</p>
-      <a class="row" href="#/program/${encodeURIComponent(p.id)}/${encodeURIComponent(st.next.id)}">
-        <h2 class="grow ellipsis">${esc(st.next.name)}</h2>${icon('chevron-right', 'muted')}
-      </a>
-      <p class="muted">${esc(p.name)} · ${plural(st.next.exercises.length, 'esercizio', 'esercizi')} · ~${estMinutes(st.next)} min</p>
+      <div id="next-day">${nextDayInfo(p, st.next)}</div>
       ${st.blockDone ? `<p class="notes">Hai completato questo blocco: <a href="#/import">chiedi a Claude la prossima scheda</a>.</p>` : ''}
+      ${p.days.length > 1 ? `<div class="chip-scroll" role="group" aria-label="Scegli il giorno">${p.days.map(d => dayChip(d, st)).join('')}</div>` : ''}
       <button class="btn block" id="start-next">${icon('play')}Inizia allenamento</button>
     </section>`;
 }
@@ -62,8 +71,15 @@ export function renderHome() {
     ${archived.length ? `<details class="archive"><summary>Archiviate (${archived.length})</summary>
       ${archived.map(p => programCard(p, activeProgramId)).join('')}</details>` : ''}
   `;
-  $('#start-next')?.addEventListener('click', () => {
-    const p = getProgram(activeProgramId);
-    startWorkout(p.id, programStats(p).next.id);
-  });
+  const start = $('#start-next');
+  if (!start) return;
+  let dayId = programStats(active).next.id;
+  const chips = view.querySelectorAll('[data-day]');
+  chips.forEach(chip => chip.addEventListener('click', () => {
+    dayId = chip.dataset.day;
+    chips.forEach(c => c.setAttribute('aria-pressed', c === chip));
+    $('#next-day').innerHTML = nextDayInfo(active, active.days.find(d => d.id === dayId));
+  }));
+  $('.hero-card [aria-pressed="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  start.addEventListener('click', () => startWorkout(active.id, dayId));
 }

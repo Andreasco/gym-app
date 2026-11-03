@@ -76,17 +76,18 @@ export const lastSessionOfDay = (pid, did) => programSessions(pid).find(s => s.d
 export function programStats(p) {
   const done = programSessions(p.id);
   const last = done[0];
-  const lastIdx = last ? p.days.findIndex(d => d.id === last.dayId) : -1;
   const muscles = new Set(p.days.flatMap(d => d.exercises.flatMap(x => getExercise(x.exerciseId)?.primaryMuscles || [])));
-  // A "week" of the block is one completed round of all the program's days.
-  const rounds = p.days.length ? Math.min(...p.days.map(d => done.filter(s => s.dayId === d.id).length)) : 0;
+  const timesDone = d => done.filter(s => s.dayId === d.id).length;
+  // A "week" of the block is one completed round of all the program's days, in any order.
+  const rounds = p.days.length ? Math.min(...p.days.map(timesDone)) : 0;
   return {
     days: p.days.length,
     exercises: p.days.reduce((n, d) => n + d.exercises.length, 0),
     weeklySets: p.days.reduce((n, d) => n + d.exercises.reduce((m, x) => m + (Number(x.sets) || 0), 0), 0),
     sessions: done.length,
     last,
-    next: p.days[(lastIdx + 1) % p.days.length],
+    next: p.days.find(d => timesDone(d) === rounds),
+    doneThisWeek: p.days.filter(d => timesDone(d) > rounds).map(d => d.id),
     muscles: muscles.size,
     week: rounds + 1,
     blockDone: Number(p.weeks) > 0 && rounds >= Number(p.weeks),
