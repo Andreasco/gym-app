@@ -115,7 +115,7 @@ Andrea's training profile (goal, schedule, equipment, injuries, exercises to avo
 - Everything shown in the app is Italian: program and day names, `description`, `notes`, and a `name` on every exercise (catalog names are English).
 - Intensity goes in `rpe`. His old sheets used RIR: RIR 2 is RPE 8.
 - Session length: the app estimates `sets × (restSec + 45 s)` per exercise. Keep that estimate about 10 minutes under the session length he asked for, to leave room for the warm-up.
-- Put the warm-up in the day `notes`. Keep exercise `notes` to one short line: they are shown on the workout card every time.
+- Put the warm-up in the day `notes`: they are shown on top of the day page and of the running workout, under the title "Riscaldamento e indicazioni". Keep exercise `notes` to one short line: they are shown on the workout card every time.
 
 ### What the schema cannot express
 

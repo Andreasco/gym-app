@@ -1,6 +1,6 @@
 import { $, esc, fmtDate, fmtNum, fmtCompact, fmtSigned, toast, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
-import { pickExercise, targetLine, statTiles } from '../components.js';
+import { pickExercise, targetLine, statTiles, dayNotes } from '../components.js';
 import { startTimer, stopTimer } from '../timer.js';
 import {
   getSession, getProgram, updateSet, toggleSet, addSet, setEntryNote, swapEntryExercise, addEntry,
@@ -128,6 +128,7 @@ export function renderWorkout(sid) {
 
   view.innerHTML = `
     ${header(s, report)}
+    ${readOnly ? '' : dayNotes(getProgram(s.programId)?.days.find(d => d.id === s.dayId))}
     ${s.entries.map((e, ei) => entryCard(s, e, ei, readOnly, report?.exercises.find(x => x.exerciseId === e.exerciseId))).join('')}
     ${readOnly ? `
       <div class="btn-row"><button class="btn danger block" id="delete">${icon('trash')}Elimina allenamento</button></div>

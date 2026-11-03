@@ -54,7 +54,7 @@ REGOLE
 - "restSec" è il recupero in secondi. "rpe" (da 1 a 10) e "weightKg" (carico di partenza) sono facoltativi.
 - "level" è beginner, intermediate oppure expert. "weeks" è la durata del blocco in settimane.
 - Ogni giorno ha un "id" corto e stabile e almeno un esercizio. Non usare lo stesso "exerciseId" due volte nello stesso giorno.
-- "notes" di un esercizio: una riga al massimo, compare a ogni allenamento. Il riscaldamento va nelle "notes" del giorno.
+- "notes" di un esercizio: una riga al massimo, compare a ogni allenamento. Il riscaldamento va nelle "notes" del giorno, che compaiono in cima alla pagina del giorno e all'allenamento.
 - L'app non ha superserie né prescrizioni diverse per settimana. Una superserie si scrive come due esercizi consecutivi con una nota che lo dice e un recupero breve sul primo (mai 0). La progressione nelle settimane si spiega in "description".
 - L'app suggerisce di salire di carico quando tutte le serie arrivano in cima all'intervallo di "reps": usa intervalli come "6-8" dove vuoi questa progressione.
 - Per stimare la durata di una seduta conta circa 45 secondi per serie più il recupero.

@@ -60,6 +60,11 @@ export function programMetaChips(p) {
 // Position in the block for a program and its programStats().
 export const blockLabel = (p, st) => (st.blockDone ? 'Blocco completato' : `Settimana ${st.week}${p.weeks ? ` di ${esc(p.weeks)}` : ''}`);
 
+// Warm-up and session notes of a day, shown before its exercises.
+export const dayNotes = day => (day?.notes
+  ? `<section class="notes"><h3>Riscaldamento e indicazioni</h3><p>${esc(day.notes)}</p></section>`
+  : '');
+
 // Row of summary tiles from [value, label] pairs.
 export const statTiles = items =>
   `<div class="stats">${items.map(([value, label]) => `<div class="stat"><b>${esc(value)}</b><span>${esc(label)}</span></div>`).join('')}</div>`;

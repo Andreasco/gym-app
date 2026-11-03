@@ -48,7 +48,7 @@ A visual redesign only touches `styles.css`, `index.html` and `js/ui/`; `js/core
     {
       "id": "upper-a",
       "name": "Upper A",
-      "notes": "optional, shown on top of the day",
+      "notes": "optional, warm-up and session notes, shown on top of the day and of the workout",
       "exercises": [
         {
           "exerciseId": "Barbell_Bench_Press_-_Medium_Grip",
