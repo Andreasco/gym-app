@@ -1,8 +1,9 @@
 import { $, esc, toast, icon, fmtTime, plural } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
-import { pickExercise } from '../components.js';
+import { pickExercise, supersetCard } from '../components.js';
 import { IT } from '../../core/i18n.js';
 import { getProgram, updateProgram, newDayId } from '../../core/store.js';
+import { supersetBlocks, moveBlock } from '../../core/queries.js';
 import { validateProgram } from '../../core/validate.js';
 import { getExercise, exerciseName, plannedName, imageUrl } from '../../core/exercises.js';
 
@@ -121,9 +122,11 @@ const exerciseSummary = x => [
   x.weightKg && `${esc(x.weightKg)} kg`,
 ].filter(Boolean).join(' · ');
 
-function exerciseEditor(x, xi, count, open) {
+// bi and blockCount locate the exercise's block: the arrows move the whole block.
+function exerciseEditor(x, xi, count, open, bi, blockCount, inSuperset) {
   const ex = getExercise(x.exerciseId);
   const base = `exercises.${xi}`;
+  const what = inSuperset ? 'superserie' : 'esercizio';
   return `
     <details class="card ex-edit" name="exercise" data-x="${xi}" ${open ? 'open' : ''}>
       <summary>
@@ -145,10 +148,11 @@ function exerciseEditor(x, xi, count, open) {
         </div>
         <label class="field"><span>Note tecniche</span><input data-bind="${base}.notes" value="${esc(x.notes || '')}"></label>
         <div class="mini">
-          <button data-act="ex-up" data-x="${xi}" aria-label="Sposta su" ${xi ? '' : 'disabled'}>${icon('arrow-up')}</button>
-          <button data-act="ex-down" data-x="${xi}" aria-label="Sposta giù" ${xi < count - 1 ? '' : 'disabled'}>${icon('arrow-down')}</button>
+          <button data-act="ex-up" data-x="${xi}" aria-label="Sposta ${what} su" ${bi ? '' : 'disabled'}>${icon('arrow-up')}</button>
+          <button data-act="ex-down" data-x="${xi}" aria-label="Sposta ${what} giù" ${bi < blockCount - 1 ? '' : 'disabled'}>${icon('arrow-down')}</button>
           <button data-act="ex-swap" data-x="${xi}">${icon('swap')}Cambia</button>
           <button data-act="ex-del" data-x="${xi}" aria-label="Elimina esercizio" class="danger">${icon('trash')}</button>
+          ${xi < count - 1 ? `<button data-act="ex-join" data-x="${xi}">${x.supersetWithNext ? 'Separa dal successivo' : 'Superserie con il successivo'}</button>` : ''}
         </div>
       </div>
     </details>`;
@@ -159,9 +163,23 @@ function exerciseEditor(x, xi, count, open) {
 async function applyExerciseAction(draft, act, xi) {
   const list = draft.data.exercises;
   switch (act) {
-    case 'ex-up': move(list, xi, -1); draft.open = xi - 1; break;
-    case 'ex-down': move(list, xi, 1); draft.open = xi + 1; break;
-    case 'ex-del': list.splice(xi, 1); draft.open = null; break;
+    case 'ex-up':
+    case 'ex-down': {
+      const item = list[xi];
+      draft.data.exercises = moveBlock(list, xi, act === 'ex-up' ? -1 : 1);
+      draft.open = draft.data.exercises.indexOf(item);
+      break;
+    }
+    case 'ex-join':
+      if (list[xi].supersetWithNext) delete list[xi].supersetWithNext;
+      else list[xi].supersetWithNext = true;
+      break;
+    case 'ex-del':
+      // A superset that loses its last exercise must not join the one after it.
+      if (!list[xi].supersetWithNext) delete list[xi - 1]?.supersetWithNext;
+      list.splice(xi, 1);
+      draft.open = null;
+      break;
     case 'ex-swap': {
       const id = await pickExercise('Cambia esercizio');
       if (!id) return false;
@@ -172,6 +190,7 @@ async function applyExerciseAction(draft, act, xi) {
     case 'ex-add': {
       const id = await pickExercise('Aggiungi esercizio');
       if (!id) return false;
+      delete list.at(-1)?.supersetWithNext;
       list.push({ exerciseId: id, sets: 3, reps: '8-12', restSec: 90 });
       draft.open = list.length - 1;
       break;
@@ -200,8 +219,10 @@ export function renderDayEditor(pid, did) {
     <label class="field"><span>Nome del giorno</span><input data-bind="name" value="${esc(dr.name || '')}"></label>
     <label class="field"><span>Note del giorno</span><input data-bind="notes" value="${esc(dr.notes || '')}"></label>
     <h2>Esercizi</h2>
-    ${dr.exercises.map((x, xi) => exerciseEditor(x, xi, dr.exercises.length, draft.open === xi)).join('')
-      || '<p class="muted">Nessun esercizio: aggiungine almeno uno per salvare.</p>'}
+    ${supersetBlocks(dr.exercises).map((block, bi, all) => {
+      const cards = block.map(xi => exerciseEditor(dr.exercises[xi], xi, dr.exercises.length, draft.open === xi, bi, all.length, block.length > 1)).join('');
+      return block.length > 1 ? supersetCard(cards) : cards;
+    }).join('') || '<p class="muted">Nessun esercizio: aggiungine almeno uno per salvare.</p>'}
     <div class="btn-row"><button class="btn secondary block" data-act="ex-add">${icon('plus')}Esercizio</button></div>
     ${actionBar()}
   `;

@@ -1,8 +1,8 @@
 import { $, esc, plural, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
-import { exerciseRow, startWorkout, dayNotes } from '../components.js';
+import { exerciseRow, startWorkout, dayNotes, supersetCard } from '../components.js';
 import { getProgram } from '../../core/store.js';
-import { estMinutes } from '../../core/queries.js';
+import { estMinutes, supersetBlocks } from '../../core/queries.js';
 
 export function renderDay(pid, did) {
   const p = getProgram(pid);
@@ -15,7 +15,10 @@ export function renderDay(pid, did) {
       <a class="btn secondary small" href="#/edit/${encodeURIComponent(p.id)}/${encodeURIComponent(d.id)}">${icon('pencil')}Modifica</a>
     </div>
     ${dayNotes(d)}
-    ${d.exercises.map(x => exerciseRow(x)).join('')}
+    ${supersetBlocks(d.exercises).map(block => {
+      const rows = block.map(i => exerciseRow(d.exercises[i])).join('');
+      return block.length > 1 ? supersetCard(rows) : rows;
+    }).join('')}
     <div class="action-bar"><button class="btn" id="start">${icon('play')}Inizia allenamento</button></div>
   `;
   $('#start').onclick = () => startWorkout(p.id, d.id);

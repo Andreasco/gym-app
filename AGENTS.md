@@ -117,10 +117,11 @@ Andrea's training profile (goal, schedule, equipment, injuries, exercises to avo
 - Session length: the app estimates `sets × (restSec + 45 s)` per exercise. Keep that estimate about 10 minutes under the session length he asked for, to leave room for the warm-up.
 - Put the warm-up in the day `notes`: they are shown on top of the day page and of the running workout, under the title "Riscaldamento e indicazioni". Keep exercise `notes` to one short line: they are shown on the workout card every time.
 
+- Supersets: list the exercises one after the other and add `"supersetWithNext": true` to all but the last. The app shows them as one card and moves them as one block. Give the marked ones a short `restSec` such as 20: 0 falls back to the 90-second default.
+
 ### What the schema cannot express
 
 - **Weekly changes.** An exercise has one prescription, the same every week. Write the rule for the block (which week to add load, which week to deload) in `description`.
-- **Supersets.** List the two exercises one after the other, say so in both `notes`, and give the first a short `restSec` such as 20. Do not use 0: it falls back to the 90-second default.
 - **Starting loads.** `weightKg` only prefills the first workout of an exercise with no history. After that the app prefills the weights used last time.
 - **Per-day history.** History, prefill and records are keyed by `exerciseId` across all days and programs. Variants that use different loads need different catalog ids (dumbbell and cable lateral raises, for example). Never use the same `exerciseId` twice in one day.
 
@@ -156,7 +157,7 @@ programs/<id>.json                       one file per program
 sessions/<yyyy>/<yyyy-mm-dd>-<id>.json   one file per finished workout
 ```
 
-- Session shape: `{ id, programId, programName, dayId, dayName, startedAt, finishedAt, entries: [{ exerciseId, planId, name, note, sets: [{ weight, reps, done }] }] }`. `planId` is the planned exercise when it was swapped during the workout (`null` for one added on the fly).
+- Session shape: `{ id, programId, programName, dayId, dayName, startedAt, finishedAt, entries: [{ exerciseId, planId, name, note, supersetWithNext, sets: [{ weight, reps, done }] }] }`. `planId` is the planned exercise when it was swapped during the workout (`null` for one added on the fly). Entries are in the order they were left in during the workout, which can differ from the program.
 - **Publishing a program for Andrea:** commit `programs/<id>.json` to `gym-app-data`. The app pulls it on the next sync (on open or foreground) and shows it on the home screen. The full procedure is in "Writing a new program for Andrea".
 - Conflict rule: a file already known locally takes the remote version unless it was edited on the phone (`_dirty`). In that case the phone's version wins. Local deletions delete the remote file.
 - The app accepts only private repos. It uses a fine-grained PAT scoped to `gym-app-data` with *Contents: Read and write*, stored on the device only.

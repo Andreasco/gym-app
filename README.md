@@ -76,6 +76,7 @@ A visual redesign only touches `styles.css`, `index.html` and `js/ui/`; `js/core
 | `restSec` | no | Starts the rest timer when a set is ticked |
 | `name` (exercise) | no | Custom display name; defaults to the database name |
 | `rpe`, `weightKg`, `notes` | no | `weightKg` is the starting weight when there is no history |
+| `supersetWithNext` | no | `true` joins the exercise to the next one in a superset, shown as one card; ignored on the last exercise of a day |
 | `archived` | no | `true` moves the program to *Archiviate* at the bottom of the home screen; set by the app, dropped on import |
 
 ## GitHub sync

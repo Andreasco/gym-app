@@ -23,7 +23,11 @@ const EXAMPLE = `{
       "notes": "Riscaldamento e indicazioni per la seduta.",
       "exercises": [
         { "exerciseId": "Barbell_Bench_Press_-_Medium_Grip", "name": "Panca piana bilanciere",
-          "sets": 4, "reps": "6-8", "restSec": 150, "rpe": 8, "notes": "Una riga al massimo." }
+          "sets": 4, "reps": "6-8", "restSec": 150, "rpe": 8, "notes": "Una riga al massimo." },
+        { "exerciseId": "Leg_Extensions", "name": "Leg extension",
+          "sets": 3, "reps": "10-12", "restSec": 20, "supersetWithNext": true },
+        { "exerciseId": "Lying_Leg_Curls", "name": "Leg curl",
+          "sets": 3, "reps": "10-12", "restSec": 75 }
       ]
     }
   ]
@@ -55,7 +59,8 @@ REGOLE
 - "level" è beginner, intermediate oppure expert. "weeks" è la durata del blocco in settimane.
 - Ogni giorno ha un "id" corto e stabile e almeno un esercizio. Non usare lo stesso "exerciseId" due volte nello stesso giorno.
 - "notes" di un esercizio: una riga al massimo, compare a ogni allenamento. Il riscaldamento va nelle "notes" del giorno, che compaiono in cima alla pagina del giorno e all'allenamento.
-- L'app non ha superserie né prescrizioni diverse per settimana. Una superserie si scrive come due esercizi consecutivi con una nota che lo dice e un recupero breve sul primo (mai 0). La progressione nelle settimane si spiega in "description".
+- Una superserie sono esercizi consecutivi: metti "supersetWithNext": true su tutti tranne l'ultimo e l'app li mostra in un'unica card. Dai un recupero breve a quelli col segno (mai 0) e il recupero vero all'ultimo.
+- L'app non ha prescrizioni diverse per settimana: la progressione nelle settimane si spiega in "description".
 - L'app suggerisce di salire di carico quando tutte le serie arrivano in cima all'intervallo di "reps": usa intervalli come "6-8" dove vuoi questa progressione.
 - Per stimare la durata di una seduta conta circa 45 secondi per serie più il recupero.
 - Tutti i testi sono in italiano. Non aggiungere campi che non sono nel formato.

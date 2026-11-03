@@ -1,12 +1,12 @@
 import { $, esc, fmtDate, fmtNum, fmtCompact, fmtSigned, toast, icon } from '../dom.js';
 import { view, setChrome, renderNotFound } from '../shell.js';
-import { pickExercise, targetLine, statTiles, dayNotes } from '../components.js';
+import { pickExercise, targetLine, statTiles, dayNotes, supersetCard } from '../components.js';
 import { startTimer, stopTimer } from '../timer.js';
 import {
   getSession, getProgram, updateSet, toggleSet, addSet, setEntryNote, swapEntryExercise, addEntry,
-  finishSession, countDoneSets, discardSession, deleteSession, requestSync,
+  finishSession, countDoneSets, discardSession, deleteSession, requestSync, moveEntryBlock,
 } from '../../core/store.js';
-import { lastPerformance, lastNote, planFor, sessionReport, progressionHint } from '../../core/queries.js';
+import { lastPerformance, lastNote, planFor, sessionReport, progressionHint, supersetBlocks } from '../../core/queries.js';
 import { getExercise, exerciseName, plannedName, imageUrl } from '../../core/exercises.js';
 
 const kg = n => `${fmtNum(n)} kg`;
@@ -35,7 +35,7 @@ function reportLine(r) {
   return `<p class="hint">${icon('chart')}<span>Serie migliore <b>${best}</b>${change ? ` · ${change}` : ''}</span></p>`;
 }
 
-function entryCard(s, e, ei, readOnly, report) {
+function entryCard(s, e, ei, readOnly, report, footer) {
   const x = planFor(s, e);
   const ex = getExercise(e.exerciseId);
   const last = lastPerformance(e.exerciseId, s.id);
@@ -72,7 +72,27 @@ function entryCard(s, e, ei, readOnly, report) {
         <button class="btn secondary small" data-addset="${ei}">${icon('plus')}Serie</button>
         <button class="btn secondary small" data-swap="${ei}">${icon('swap')}Sostituisci</button>
       </div>`}
+      ${footer}
     </section>`;
+}
+
+function moveRow(block, bi, count) {
+  if (count < 2) return '';
+  return `
+    <div class="mini block-move">
+      <span class="muted small grow">Sposta ${block.length > 1 ? 'superserie' : 'esercizio'}</span>
+      <button data-move="-1" data-e="${block[0]}" aria-label="Sposta su" ${bi ? '' : 'disabled'}>${icon('arrow-up')}</button>
+      <button data-move="1" data-e="${block[0]}" aria-label="Sposta giù" ${bi < count - 1 ? '' : 'disabled'}>${icon('arrow-down')}</button>
+    </div>`;
+}
+
+function entryBlocks(s, readOnly, report) {
+  return supersetBlocks(s.entries).map((block, bi, all) => {
+    const move = readOnly ? '' : moveRow(block, bi, all.length);
+    const cards = block.map(ei => entryCard(s, s.entries[ei], ei, readOnly,
+      report?.exercises.find(x => x.exerciseId === s.entries[ei].exerciseId), block.length > 1 ? '' : move)).join('');
+    return block.length > 1 ? supersetCard(cards, move) : cards;
+  }).join('');
 }
 
 // Report on top of a finished workout: totals, comparison with the previous time, records.
@@ -129,7 +149,7 @@ export function renderWorkout(sid) {
   view.innerHTML = `
     ${header(s, report)}
     ${readOnly ? '' : dayNotes(getProgram(s.programId)?.days.find(d => d.id === s.dayId))}
-    ${s.entries.map((e, ei) => entryCard(s, e, ei, readOnly, report?.exercises.find(x => x.exerciseId === e.exerciseId))).join('')}
+    ${entryBlocks(s, readOnly, report)}
     ${readOnly ? `
       <div class="btn-row"><button class="btn danger block" id="delete">${icon('trash')}Elimina allenamento</button></div>
     ` : `
@@ -158,6 +178,13 @@ export function renderWorkout(sid) {
     if (!id) return;
     swapEntryExercise(sid, Number(btn.dataset.swap), id);
     rerender();
+  });
+  view.querySelectorAll('[data-move]').forEach(btn => btn.onclick = () => {
+    const entry = s.entries[Number(btn.dataset.e)];
+    moveEntryBlock(sid, Number(btn.dataset.e), Number(btn.dataset.move));
+    rerender();
+    // Keep the arrows under the finger, to move the block again.
+    view.querySelector(`[data-move][data-e="${s.entries.indexOf(entry)}"]`)?.scrollIntoView({ block: 'center' });
   });
   $('#add-ex')?.addEventListener('click', async () => {
     const id = await pickExercise('Aggiungi esercizio');

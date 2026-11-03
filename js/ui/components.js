@@ -14,6 +14,10 @@ export function targetLine(x, label = '') {
     </div>`;
 }
 
+// One card around the exercises of a superset.
+export const supersetCard = (content, footer = '') =>
+  `<div class="superset"><p class="eyebrow">Superserie</p>${content}${footer}</div>`;
+
 export function exerciseRow(x) {
   const ex = getExercise(x.exerciseId);
   const inner = `

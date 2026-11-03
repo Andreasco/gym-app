@@ -2,7 +2,7 @@
 // they read through the getters/queries and change it through the actions below.
 import { STORE_KEY, DEFAULT_REST_SEC } from './config.js';
 import { queueDelete } from './sync.js';
-import { lastPerformance, bestSet, e1rm, planFor } from './queries.js';
+import { lastPerformance, bestSet, e1rm, planFor, moveBlock } from './queries.js';
 import { exerciseName } from './exercises.js';
 
 const defaultState = () => ({ programs: [], sessions: [], activeProgramId: null, activeSessionId: null, pendingDeletes: [] });
@@ -129,10 +129,11 @@ export function startSession(programId, dayId) {
   const s = {
     id: uid(), programId: p.id, programName: p.name, dayId: d.id, dayName: d.name,
     startedAt: now(), finishedAt: null,
-    entries: d.exercises.map(x => ({
+    entries: d.exercises.map((x, i) => ({
       exerciseId: x.exerciseId,
       planId: x.exerciseId,
       ...(x.name ? { name: x.name } : {}),
+      ...(x.supersetWithNext && d.exercises[i + 1] ? { supersetWithNext: true } : {}),
       note: '',
       sets: initialSets(x.exerciseId, x.sets, { fallbackWeight: x.weightKg ?? '' }),
     })),
@@ -191,6 +192,13 @@ export function swapEntryExercise(sessionId, entryIndex, exerciseId) {
 export function addEntry(sessionId, exerciseId) {
   const s = getSession(sessionId);
   s.entries.push({ exerciseId, planId: null, note: '', sets: initialSets(exerciseId, 3, { excludeSessionId: s.id }) });
+  commit();
+}
+
+// Moves an entry, with the rest of its superset, one block up (-1) or down (1) for this session only.
+export function moveEntryBlock(sessionId, entryIndex, delta) {
+  const s = getSession(sessionId);
+  s.entries = moveBlock(s.entries, entryIndex, delta);
   commit();
 }
 

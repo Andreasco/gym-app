@@ -67,6 +67,25 @@ export function planFor(session, entry) {
   return day?.exercises.find(x => x.exerciseId === (entry.planId || entry.exerciseId)) || {};
 }
 
+// Indexes of a list of exercises or workout entries, grouped in blocks:
+// a superset is one block, any other item is a block of its own.
+export function supersetBlocks(list) {
+  return list.reduce((blocks, x, i) => {
+    if (i && list[i - 1].supersetWithNext) blocks.at(-1).push(i);
+    else blocks.push([i]);
+    return blocks;
+  }, []);
+}
+
+// New order of the list with the block holding item i moved one block up (-1) or down (1).
+export function moveBlock(list, i, delta) {
+  const blocks = supersetBlocks(list);
+  const from = blocks.findIndex(b => b.includes(i));
+  if (!blocks[from + delta]) return list;
+  blocks.splice(from + delta, 0, blocks.splice(from, 1)[0]);
+  return blocks.flat().map(j => list[j]);
+}
+
 export const estMinutes = day =>
   Math.round(day.exercises.reduce((t, x) => t + (Number(x.sets) || 0) * ((Number(x.restSec) || DEFAULT_REST_SEC) + 45), 0) / 60);
 
